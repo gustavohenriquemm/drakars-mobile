@@ -22,15 +22,19 @@
   .row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:#1D2128;margin-bottom:6px}
   .chk{width:22px;height:22px;border-radius:7px;border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:transparent;color:#000;font-weight:900;font-size:13px}
   .chk.done{background:#7EE823;border-color:#7EE823}
-  .ttl{font-size:14px;font-weight:600;flex:1}
+  .ttl{font-size:14px;font-weight:600;flex:1;min-width:0}
   .ttl.done{text-decoration:line-through;color:rgba(255,255,255,.45)}
   .sub{font-size:11px;color:rgba(255,255,255,.52);margin-top:2px}
-  .form{display:flex;gap:6px;margin-bottom:10px}
-  input{flex:1;background:#111318;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;color:#fff;font-size:14px;outline:none}
-  .btn{background:#7EE823;color:#000;border:none;border-radius:12px;padding:10px 15px;font-weight:700;font-size:13px;cursor:pointer}
+  .form{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+  input,select{flex:1;min-width:80px;background:#111318;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 11px;color:#fff;font-size:13px;outline:none}
+  .btn{background:#7EE823;color:#000;border:none;border-radius:12px;padding:9px 14px;font-weight:700;font-size:13px;cursor:pointer}
   .btn2{background:rgba(255,255,255,.09);color:#fff;border:none;border-radius:10px;padding:7px 11px;font-size:12px;cursor:pointer}
-  .nav{position:fixed;bottom:0;left:0;right:0;background:#111317;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-around;padding:9px 6px}
-  .nav button{background:none;border:none;color:rgba(255,255,255,.55);font-size:12px;font-weight:600;padding:7px 12px;border-radius:10px}
+  .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+  .kpi{background:#1D2128;border-radius:12px;padding:8px;text-align:center}
+  .kpi .lbl{font-size:10px;color:rgba(255,255,255,.55)}
+  .kpi .val{font-size:13px;font-weight:700;margin-top:2px}
+  .nav{position:fixed;bottom:0;left:0;right:0;background:#111317;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-around;padding:8px 4px}
+  .nav button{background:none;border:none;color:rgba(255,255,255,.55);font-size:11px;font-weight:600;padding:7px 8px;border-radius:10px}
   .nav button.act{background:#233217;color:#9AF549}
   .badge-on{color:#9AF549;font-size:11px;font-weight:700}
   .badge-off{color:#F87171;font-size:11px;font-weight:700}
@@ -53,6 +57,7 @@
   <div id="content"></div>
   <div class="nav">
     <button class="act" onclick="setTab('tasks',this)">Tarefas</button>
+    <button onclick="setTab('home',this)">🏠 Casa</button>
     <button onclick="setTab('agenda',this)">Agenda</button>
     <button onclick="setTab('systems',this)">Sistemas</button>
     <button onclick="setTab('pc',this)">Drakars</button>
@@ -173,6 +178,52 @@ async function checkinHabit(id){
   });
 }
 
+async function addTx(e){
+  e.preventDefault();
+  const title=document.getElementById("txTitle").value.trim();
+  const amount=parseFloat(String(document.getElementById("txAmount").value).replace(",","."));
+  const type=document.getElementById("txType").value;
+  const owner=document.getElementById("txOwner").value;
+  if(!title || isNaN(amount) || amount<=0) return;
+  document.getElementById("txTitle").value="";
+  document.getElementById("txAmount").value="";
+  const date=new Date().toISOString().slice(0,10);
+  await pushOp("add_transaction",{title,amount,type,owner,date,category:"Celular"},(d)=>{
+    d.transactions=d.transactions||[];
+    d.transactions.unshift({id:"tx-"+Date.now(),title,amount,type,owner,date,category:"Celular",paid:true});
+  });
+}
+
+async function addCal(e){
+  e.preventDefault();
+  const title=document.getElementById("calTitle").value.trim();
+  const date=document.getElementById("calDate").value || new Date().toISOString().slice(0,10);
+  const time=document.getElementById("calTime").value || "";
+  if(!title) return;
+  document.getElementById("calTitle").value="";
+  await pushOp("add_calendar_event",{title,date,time,category:"casal",person:"casal"},(d)=>{
+    d.calendarEvents=d.calendarEvents||[];
+    d.calendarEvents.unshift({id:"cal-"+Date.now(),title,date,time,category:"casal",person:"casal"});
+  });
+}
+
+async function addShop(e){
+  e.preventDefault();
+  const title=document.getElementById("shopTitle").value.trim();
+  if(!title) return;
+  document.getElementById("shopTitle").value="";
+  await pushOp("add_shopping_item",{title,category:"mercado"},(d)=>{
+    d.shoppingList=d.shoppingList||[];
+    d.shoppingList.unshift({id:"sh-"+Date.now(),title,category:"mercado",checked:false});
+  });
+}
+
+async function toggleShop(id){
+  await pushOp("toggle_shopping_item",{id},(d)=>{
+    d.shoppingList=(d.shoppingList||[]).map(s=>s.id===id?{...s,checked:!s.checked}:s);
+  });
+}
+
 async function sendCmd(e){
   e.preventDefault();
   const inp=document.getElementById("cmdInp");
@@ -194,12 +245,14 @@ function saveManualCfg(e){
   }
 }
 
+function fmtBrl(n){ return Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
+
 function render(warn){
   const el=document.getElementById("content");
   const ban=document.getElementById("banner");
   if(!cfg){
     ban.innerHTML="";
-    el.innerHTML=\`<div class="card"><div class="ttl" style="margin-bottom:8px">Parear com seu Drakars</div><div class="sub" style="margin-bottom:10px">Escaneie o QR Code na aba <b>Celular</b> do Drakars no PC, ou cole os dados abaixo:</div><form onsubmit="saveManualCfg(event)"><input id="cfgGist" placeholder="Gist ID" style="width:100%;margin-bottom:8px" /><input id="cfgTok" type="password" placeholder="GitHub Token" style="width:100%;margin-bottom:8px" /><button class="btn" type="submit" style="width:100%">Conectar</button></form></div>\`;
+    el.innerHTML=`<div class="card"><div class="ttl" style="margin-bottom:8px">Parear com seu Drakars</div><div class="sub" style="margin-bottom:10px">Escaneie o QR Code na aba <b>Celular</b> do Drakars no PC, ou cole os dados abaixo:</div><form onsubmit="saveManualCfg(event)"><input id="cfgGist" placeholder="Gist ID" style="width:100%;margin-bottom:8px" /><input id="cfgTok" type="password" placeholder="GitHub Token" style="width:100%;margin-bottom:8px" /><button class="btn" type="submit" style="width:100%">Conectar</button></form></div>`;
     return;
   }
   if(!data){
@@ -218,34 +271,75 @@ function render(warn){
 
   if(tab==="tasks"){
     const list=(data.tasks||[]).filter(t=>filter==="all"?true:filter==="done"?t.completed:!t.completed);
-    const rows=list.length?list.map(t=>\`<div class="row"><button class="chk \${t.completed?'done':''}" onclick="toggleTask('\${t.id}')">\${t.completed?'✓':''}</button><div class="ttl \${t.completed?'done':''}">\${esc(t.title)}<div class="sub">\${[t.dueDate,t.dueTime,t.category].filter(Boolean).join(" • ")}</div></div></div>\`).join(""):'<div class="sub" style="padding:12px;text-align:center">Nenhuma tarefa aqui!</div>';
-    el.innerHTML=\`
+    const rows=list.length?list.map(t=>`<div class="row"><button class="chk ${t.completed?'done':''}" onclick="toggleTask('${t.id}')">${t.completed?'✓':''}</button><div class="ttl ${t.completed?'done':''}">${esc(t.title)}<div class="sub">${[t.dueDate,t.dueTime,t.category].filter(Boolean).join(" • ")}</div></div></div>`).join(""):'<div class="sub" style="padding:12px;text-align:center">Nenhuma tarefa aqui!</div>';
+    el.innerHTML=`
       <form class="form" onsubmit="addTask(event)"><input id="taskInp" placeholder="Nova tarefa..." /><button class="btn" type="submit">+</button></form>
       <div style="display:flex;gap:6px;margin-bottom:8px">
-        <button class="btn2" style="\${filter==='pending'?'background:#233217;color:#9AF549':''}" onclick="filter='pending';render()">Pendentes (\${pending.length})</button>
-        <button class="btn2" style="\${filter==='done'?'background:#233217;color:#9AF549':''}" onclick="filter='done';render()">Feitas</button>
-        <button class="btn2" style="\${filter==='all'?'background:#233217;color:#9AF549':''}" onclick="filter='all';render()">Todas</button>
+        <button class="btn2" style="${filter==='pending'?'background:#233217;color:#9AF549':''}" onclick="filter='pending';render()">Pendentes (${pending.length})</button>
+        <button class="btn2" style="${filter==='done'?'background:#233217;color:#9AF549':''}" onclick="filter='done';render()">Feitas</button>
+        <button class="btn2" style="${filter==='all'?'background:#233217;color:#9AF549':''}" onclick="filter='all';render()">Todas</button>
       </div>
-      <div class="card">\${rows}</div>\`;
+      <div class="card">${rows}</div>`;
+  } else if(tab==="home"){
+    const month=new Date().toISOString().slice(0,7);
+    const partner=data.partnerName||"Esposa";
+    const txs=(data.transactions||[]).filter(t=>(t.date||"").startsWith(month));
+    const inc=txs.filter(t=>t.type==="income").reduce((a,b)=>a+Number(b.amount||0),0);
+    const exp=txs.filter(t=>t.type==="expense").reduce((a,b)=>a+Number(b.amount||0),0) + (data.recurringBills||[]).reduce((a,b)=>a+Number(b.amount||0),0);
+    const bal=inc-exp;
+    const today=new Date().toISOString().slice(0,10);
+    const cals=(data.calendarEvents||[]).filter(c=>c.date>=today).slice(0,6);
+    const shops=(data.shoppingList||[]).slice(0,15);
+    el.innerHTML=`
+      <div class="card">
+        <div class="sub" style="margin-bottom:8px">FINANCEIRO DO CASAL (${month}) • Você & ${esc(partner)}</div>
+        <div class="kpi-grid">
+          <div class="kpi"><div class="lbl">Entradas</div><div class="val" style="color:#9AF549">${fmtBrl(inc)}</div></div>
+          <div class="kpi"><div class="lbl">Saídas</div><div class="val" style="color:#FDA4AF">${fmtBrl(exp)}</div></div>
+          <div class="kpi"><div class="lbl">Saldo</div><div class="val" style="color:${bal>=0?'#9AF549':'#F87171'}">${fmtBrl(bal)}</div></div>
+        </div>
+        <form class="form" onsubmit="addTx(event)">
+          <input id="txTitle" placeholder="Ex: Mercado..." style="flex:2" />
+          <input id="txAmount" type="number" step="0.01" placeholder="R$" />
+          <select id="txType"><option value="expense">Despesa</option><option value="income">Receita</option></select>
+          <select id="txOwner"><option value="casal">Casal</option><option value="eu">Eu</option><option value="esposa">${esc(partner)}</option></select>
+          <button class="btn" type="submit">Lançar</button>
+        </form>
+      </div>
+      <div class="card">
+        <div class="sub" style="margin-bottom:6px">CALENDÁRIO PESSOAL & CASAL</div>
+        <form class="form" onsubmit="addCal(event)">
+          <input id="calTitle" placeholder="Compromisso..." style="flex:2" />
+          <input id="calDate" type="date" value="${today}" />
+          <input id="calTime" type="time" />
+          <button class="btn" type="submit">+</button>
+        </form>
+        ${cals.length ? cals.map(c=>`<div class="row"><div class="ttl">📅 ${esc(c.title)}<div class="sub">${c.date}${c.time?' • '+c.time:''} • ${c.person}</div></div></div>`).join("") : '<div class="sub">Sem próximos eventos</div>'}
+      </div>
+      <div class="card">
+        <div class="sub" style="margin-bottom:6px">LISTA DE COMPRAS</div>
+        <form class="form" onsubmit="addShop(event)"><input id="shopTitle" placeholder="Adicionar item..." /><button class="btn" type="submit">+</button></form>
+        ${shops.length ? shops.map(s=>`<div class="row"><button class="chk ${s.checked?'done':''}" onclick="toggleShop('${s.id}')">${s.checked?'✓':''}</button><div class="ttl ${s.checked?'done':''}">${esc(s.title)}<div class="sub">${s.category}${s.quantity?' • '+s.quantity:''}</div></div></div>`).join("") : '<div class="sub">Lista vazia</div>'}
+      </div>`;
   } else if(tab==="agenda"){
-    const rems=(data.reminders||[]).length?data.reminders.map(r=>\`<div class="row"><div class="ttl">🔔 \${esc(r.title)}<div class="sub">\${new Date(r.triggerAt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div></div></div>\`).join(""):'<div class="sub">Sem lembretes ativos</div>';
-    const habs=(data.habits||[]).map(h=>\`<div class="row"><button class="chk \${h.doneToday?'done':''}" onclick="checkinHabit('\${h.id}')">\${h.doneToday?'✓':''}</button><div class="ttl">\${h.icon} \${esc(h.title)}</div></div>\`).join("");
+    const rems=(data.reminders||[]).length?data.reminders.map(r=>`<div class="row"><div class="ttl">🔔 ${esc(r.title)}<div class="sub">${new Date(r.triggerAt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div></div></div>`).join(""):'<div class="sub">Sem lembretes ativos</div>';
+    const habs=(data.habits||[]).map(h=>`<div class="row"><button class="chk ${h.doneToday?'done':''}" onclick="checkinHabit('${h.id}')">${h.doneToday?'✓':''}</button><div class="ttl">${h.icon} ${esc(h.title)}</div></div>`).join("");
     el.innerHTML='<div class="card"><div class="sub" style="margin-bottom:6px">LEMBRETES</div>'+rems+'</div><div class="card"><div class="sub" style="margin-bottom:6px">HÁBITOS DE HOJE</div>'+habs+'</div>';
   } else if(tab==="systems"){
-    const syss=(data.systems||[]).map(s=>\`<div class="row"><div class="ttl">\${esc(s.name)}<div class="sub">\${esc(s.category)} • \${esc(s.detail)}</div></div><span class="\${s.online?'badge-on':'badge-off'}">\${s.online?'ONLINE':'OFFLINE'}</span></div>\`).join("");
+    const syss=(data.systems||[]).map(s=>`<div class="row"><div class="ttl">${esc(s.name)}<div class="sub">${esc(s.category)} • ${esc(s.detail)}</div></div><span class="${s.online?'badge-on':'badge-off'}">${s.online?'ONLINE':'OFFLINE'}</span></div>`).join("");
     const onCount=(data.systems||[]).filter(s=>s.online).length;
     el.innerHTML='<div class="card"><div class="sub" style="margin-bottom:6px">SISTEMAS ('+onCount+'/'+(data.systems||[]).length+' ON)</div>'+syss+'</div>';
   } else if(tab==="pc"){
     const rep=data.lastMobileReply;
-    el.innerHTML=\`
+    el.innerHTML=`
       <div class="card">
         <div class="sub" style="margin-bottom:6px">ENVIAR COMANDO AO DRAKARS (NO PC)</div>
-        <form class="form" onsubmit="sendCmd(event)"><input id="cmdInp" placeholder="Ex: cria lembrete..." /><button class="btn" type="submit">Enviar</button></form>
-        \${rep ? '<div class="sub" style="margin-top:6px"><b>'+esc(rep.prompt)+'</b><br><span style="color:#fff">'+esc(rep.reply)+'</span></div>' : ''}
+        <form class="form" onsubmit="sendCmd(event)"><input id="cmdInp" placeholder="Ex: gastei 120 no mercado..." /><button class="btn" type="submit">Enviar</button></form>
+        ${rep ? '<div class="sub" style="margin-top:6px"><b>'+esc(rep.prompt)+'</b><br><span style="color:#fff">'+esc(rep.reply)+'</span></div>' : ''}
       </div>
       <div class="card">
-        <div class="sub">Última sincronização do PC: \${data.pcLastSeenAt ? new Date(data.pcLastSeenAt).toLocaleString("pt-BR") : "-"}</div>
-      </div>\`;
+        <div class="sub">Última sincronização do PC: ${data.pcLastSeenAt ? new Date(data.pcLastSeenAt).toLocaleString("pt-BR") : "-"}</div>
+      </div>`;
   }
 }
 function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
