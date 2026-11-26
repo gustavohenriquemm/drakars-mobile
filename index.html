@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<meta name="theme-color" content="#0E1013" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="icon" type="image/svg+xml" href="./icon.svg" />
+<link rel="apple-touch-icon" href="./icon.svg" />
+<link rel="manifest" href="./manifest.json" />
+<title>Drakars</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0E1013;color:#F3F4F6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:14px 14px 82px;min-height:100vh}
+  .card{background:#16191E;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:12px;margin-bottom:10px}
+  .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:17px}
+  .dot{width:9px;height:9px;border-radius:50%;background:#7EE823;box-shadow:0 0 8px #7EE823}
+  .dot.pc-off{background:#F59E0B;box-shadow:0 0 8px #F59E0B}
+  .pill{background:#233217;color:#9AF549;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:600}
+  .row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:#1D2128;margin-bottom:6px}
+  .chk{width:22px;height:22px;border-radius:7px;border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;background:transparent;color:#000;font-weight:900;font-size:13px}
+  .chk.done{background:#7EE823;border-color:#7EE823}
+  .ttl{font-size:14px;font-weight:600;flex:1}
+  .ttl.done{text-decoration:line-through;color:rgba(255,255,255,.45)}
+  .sub{font-size:11px;color:rgba(255,255,255,.52);margin-top:2px}
+  .form{display:flex;gap:6px;margin-bottom:10px}
+  input{flex:1;background:#111318;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;color:#fff;font-size:14px;outline:none}
+  .btn{background:#7EE823;color:#000;border:none;border-radius:12px;padding:10px 15px;font-weight:700;font-size:13px;cursor:pointer}
+  .btn2{background:rgba(255,255,255,.09);color:#fff;border:none;border-radius:10px;padding:7px 11px;font-size:12px;cursor:pointer}
+  .nav{position:fixed;bottom:0;left:0;right:0;background:#111317;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-around;padding:9px 6px}
+  .nav button{background:none;border:none;color:rgba(255,255,255,.55);font-size:12px;font-weight:600;padding:7px 12px;border-radius:10px}
+  .nav button.act{background:#233217;color:#9AF549}
+  .badge-on{color:#9AF549;font-size:11px;font-weight:700}
+  .badge-off{color:#F87171;font-size:11px;font-weight:700}
+  .banner{font-size:11px;color:#FCD34D;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:8px 10px;margin-bottom:10px}
+</style>
+</head>
+<body>
+  <div class="hdr">
+    <div class="brand">
+      <img src="./icon.svg" width="24" height="24" alt="" style="border-radius:6px" />
+      <span>Drakars</span>
+      <span class="dot" id="pcDot" title="Status do PC"></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button class="btn2" onclick="sync()">↻</button>
+      <span class="pill" id="lvl">Nv1 • 0</span>
+    </div>
+  </div>
+  <div id="banner"></div>
+  <div id="content"></div>
+  <div class="nav">
+    <button class="act" onclick="setTab('tasks',this)">Tarefas</button>
+    <button onclick="setTab('agenda',this)">Agenda</button>
+    <button onclick="setTab('systems',this)">Sistemas</button>
+    <button onclick="setTab('pc',this)">Drakars</button>
+  </div>
+<script>
+const CFG_KEY="drakars_cloud_cfg";
+const DATA_KEY="drakars_cloud_data";
+let tab="tasks", cfg=null, data=null, filter="pending";
+
+function readConfig(){
+  if(location.hash && location.hash.length>1){
+    const p=new URLSearchParams(location.hash.slice(1));
+    const gistId=p.get("gist"), token=p.get("token");
+    if(gistId && token){
+      const next={gistId,token};
+      localStorage.setItem(CFG_KEY, JSON.stringify(next));
+      history.replaceState(null,"",location.pathname+location.search);
+      return next;
+    }
+  }
+  try{ return JSON.parse(localStorage.getItem(CFG_KEY)||"null"); }catch{ return null; }
+}
+
+cfg=readConfig();
+try{ const cached=localStorage.getItem(DATA_KEY); if(cached) data=JSON.parse(cached); }catch{}
+
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("./sw.js").catch(()=>{}); }
+
+function setTab(t,el){
+  tab=t;
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.remove("act"));
+  if(el) el.classList.add("act");
+  render();
+}
+
+async function fetchGist(){
+  if(!cfg) return null;
+  const r=await fetch("https://api.github.com/gists/"+cfg.gistId,{
+    cache:"no-store",
+    headers:{
+      Accept:"application/vnd.github+json",
+      Authorization:"Bearer "+cfg.token
+    }
+  });
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  const g=await r.json();
+  const txt=g.files && g.files["drakars-sync.json"] && g.files["drakars-sync.json"].content;
+  return txt ? JSON.parse(txt) : null;
+}
+
+async function patchGist(nextData){
+  const r=await fetch("https://api.github.com/gists/"+cfg.gistId,{
+    method:"PATCH",
+    headers:{
+      Accept:"application/vnd.github+json",
+      Authorization:"Bearer "+cfg.token,
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify({files:{"drakars-sync.json":{content:JSON.stringify(nextData,null,2)}}})
+  });
+  if(!r.ok) throw new Error("HTTP "+r.status);
+}
+
+async function sync(){
+  if(!cfg){ render(); return; }
+  try{
+    const remote=await fetchGist();
+    if(remote){
+      data=remote;
+      localStorage.setItem(DATA_KEY, JSON.stringify(data));
+    }
+    render();
+  }catch(e){
+    render("Modo offline (usando cache local).");
+  }
+}
+
+async function pushOp(type, payload, mutateLocal){
+  if(!cfg || !data) return;
+  const fresh=(await fetchGist().catch(()=>null)) || data;
+  mutateLocal(fresh);
+  fresh.pendingMobileOps = Array.isArray(fresh.pendingMobileOps) ? fresh.pendingMobileOps : [];
+  fresh.pendingMobileOps.push({
+    id: Date.now()+"-"+Math.random().toString(36).slice(2,8),
+    type,
+    payload,
+    createdAt: Date.now()
+  });
+  fresh.updatedAt = Date.now();
+  data = fresh;
+  localStorage.setItem(DATA_KEY, JSON.stringify(data));
+  render();
+  await patchGist(fresh);
+}
+
+async function addTask(e){
+  e.preventDefault();
+  const inp=document.getElementById("taskInp");
+  const title=inp ? inp.value.trim() : "";
+  if(!title) return;
+  inp.value="";
+  const newId="mob-"+Date.now();
+  await pushOp("create_task",{title,category:"Celular"},(d)=>{
+    d.tasks=d.tasks||[];
+    d.tasks.unshift({id:newId,title,priority:"medium",category:"Celular",completed:false});
+  });
+}
+
+async function toggleTask(id){
+  await pushOp("toggle_task",{id},(d)=>{
+    d.tasks=(d.tasks||[]).map(t=>t.id===id?{...t,completed:!t.completed}:t);
+  });
+}
+
+async function checkinHabit(id){
+  await pushOp("checkin_habit",{id},(d)=>{
+    d.habits=(d.habits||[]).map(h=>h.id===id?{...h,doneToday:!h.doneToday}:h);
+  });
+}
+
+async function sendCmd(e){
+  e.preventDefault();
+  const inp=document.getElementById("cmdInp");
+  const text=inp ? inp.value.trim() : "";
+  if(!text) return;
+  inp.value="";
+  await pushOp("send_chat",{text},()=>{});
+  render("Comando enviado para a fila do Drakars!");
+}
+
+function saveManualCfg(e){
+  e.preventDefault();
+  const g=document.getElementById("cfgGist").value.trim();
+  const t=document.getElementById("cfgTok").value.trim();
+  if(g && t){
+    cfg={gistId:g,token:t};
+    localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+    sync();
+  }
+}
+
+function render(warn){
+  const el=document.getElementById("content");
+  const ban=document.getElementById("banner");
+  if(!cfg){
+    ban.innerHTML="";
+    el.innerHTML=\`<div class="card"><div class="ttl" style="margin-bottom:8px">Parear com seu Drakars</div><div class="sub" style="margin-bottom:10px">Escaneie o QR Code na aba <b>Celular</b> do Drakars no PC, ou cole os dados abaixo:</div><form onsubmit="saveManualCfg(event)"><input id="cfgGist" placeholder="Gist ID" style="width:100%;margin-bottom:8px" /><input id="cfgTok" type="password" placeholder="GitHub Token" style="width:100%;margin-bottom:8px" /><button class="btn" type="submit" style="width:100%">Conectar</button></form></div>\`;
+    return;
+  }
+  if(!data){
+    el.innerHTML='<div class="card"><div class="sub">Carregando dados da nuvem...</div></div>';
+    return;
+  }
+  const pcOnline = data.pcLastSeenAt && (Date.now()-data.pcLastSeenAt)<70000;
+  document.getElementById("pcDot").className = "dot" + (pcOnline ? "" : " pc-off");
+  const pending=(data.tasks||[]).filter(t=>!t.completed);
+  document.getElementById("lvl").textContent="Nv"+(data.level||1)+" • "+pending.length+" pend.";
+
+  const msgs=[];
+  if(!pcOnline) msgs.push("PC desligado/offline agora — suas mudanças ficam salvas na nuvem e sincronizam quando o PC ligar.");
+  if(warn) msgs.push(warn);
+  ban.innerHTML = msgs.length ? '<div class="banner">'+msgs.join("<br>")+'</div>' : '';
+
+  if(tab==="tasks"){
+    const list=(data.tasks||[]).filter(t=>filter==="all"?true:filter==="done"?t.completed:!t.completed);
+    const rows=list.length?list.map(t=>\`<div class="row"><button class="chk \${t.completed?'done':''}" onclick="toggleTask('\${t.id}')">\${t.completed?'✓':''}</button><div class="ttl \${t.completed?'done':''}">\${esc(t.title)}<div class="sub">\${[t.dueDate,t.dueTime,t.category].filter(Boolean).join(" • ")}</div></div></div>\`).join(""):'<div class="sub" style="padding:12px;text-align:center">Nenhuma tarefa aqui!</div>';
+    el.innerHTML=\`
+      <form class="form" onsubmit="addTask(event)"><input id="taskInp" placeholder="Nova tarefa..." /><button class="btn" type="submit">+</button></form>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="btn2" style="\${filter==='pending'?'background:#233217;color:#9AF549':''}" onclick="filter='pending';render()">Pendentes (\${pending.length})</button>
+        <button class="btn2" style="\${filter==='done'?'background:#233217;color:#9AF549':''}" onclick="filter='done';render()">Feitas</button>
+        <button class="btn2" style="\${filter==='all'?'background:#233217;color:#9AF549':''}" onclick="filter='all';render()">Todas</button>
+      </div>
+      <div class="card">\${rows}</div>\`;
+  } else if(tab==="agenda"){
+    const rems=(data.reminders||[]).length?data.reminders.map(r=>\`<div class="row"><div class="ttl">🔔 \${esc(r.title)}<div class="sub">\${new Date(r.triggerAt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div></div></div>\`).join(""):'<div class="sub">Sem lembretes ativos</div>';
+    const habs=(data.habits||[]).map(h=>\`<div class="row"><button class="chk \${h.doneToday?'done':''}" onclick="checkinHabit('\${h.id}')">\${h.doneToday?'✓':''}</button><div class="ttl">\${h.icon} \${esc(h.title)}</div></div>\`).join("");
+    el.innerHTML='<div class="card"><div class="sub" style="margin-bottom:6px">LEMBRETES</div>'+rems+'</div><div class="card"><div class="sub" style="margin-bottom:6px">HÁBITOS DE HOJE</div>'+habs+'</div>';
+  } else if(tab==="systems"){
+    const syss=(data.systems||[]).map(s=>\`<div class="row"><div class="ttl">\${esc(s.name)}<div class="sub">\${esc(s.category)} • \${esc(s.detail)}</div></div><span class="\${s.online?'badge-on':'badge-off'}">\${s.online?'ONLINE':'OFFLINE'}</span></div>\`).join("");
+    const onCount=(data.systems||[]).filter(s=>s.online).length;
+    el.innerHTML='<div class="card"><div class="sub" style="margin-bottom:6px">SISTEMAS ('+onCount+'/'+(data.systems||[]).length+' ON)</div>'+syss+'</div>';
+  } else if(tab==="pc"){
+    const rep=data.lastMobileReply;
+    el.innerHTML=\`
+      <div class="card">
+        <div class="sub" style="margin-bottom:6px">ENVIAR COMANDO AO DRAKARS (NO PC)</div>
+        <form class="form" onsubmit="sendCmd(event)"><input id="cmdInp" placeholder="Ex: cria lembrete..." /><button class="btn" type="submit">Enviar</button></form>
+        \${rep ? '<div class="sub" style="margin-top:6px"><b>'+esc(rep.prompt)+'</b><br><span style="color:#fff">'+esc(rep.reply)+'</span></div>' : ''}
+      </div>
+      <div class="card">
+        <div class="sub">Última sincronização do PC: \${data.pcLastSeenAt ? new Date(data.pcLastSeenAt).toLocaleString("pt-BR") : "-"}</div>
+      </div>\`;
+  }
+}
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+render();
+sync();
+setInterval(()=>{ if(!document.hidden) sync(); }, 10000);
+</script>
+</body>
+</html>
