@@ -1,0 +1,31 @@
+{
+  "name": "Nós no Azul",
+  "short_name": "Nós no Azul",
+  "description": "Painel financeiro do casal com controle de contas, cartões, metas, gasto rápido e consultor inteligente",
+  "start_url": "./financeiro.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FAF5F0",
+  "theme_color": "#7B2C1B",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Lançar Gasto Rápido",
+      "short_name": "+ Gasto",
+      "url": "./gasto.html",
+      "icons": [
+        {
+          "src": "./icon.svg",
+          "sizes": "any"
+        }
+      ]
+    }
+  ]
+}

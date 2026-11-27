@@ -12,7 +12,7 @@
 <title>Drakars</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  body{background:#0E1013;color:#F3F4F6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:12px 12px 84px;min-height:100vh}
+  body{background:#0E1013;color:#F3F4F6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:12px 12px 76px;min-height:100vh}
   .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
   .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:17px}
   .dot{width:9px;height:9px;border-radius:50%;background:#7EE823;box-shadow:0 0 8px #7EE823}
@@ -28,7 +28,7 @@
   .chk.done{background:#7EE823;border-color:#7EE823}
   .ttl{font-size:13.5px;font-weight:600;flex:1;min-width:0}
   .ttl.done{text-decoration:line-through;color:rgba(255,255,255,.45)}
-  .sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:2px}
+  .sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:2px;line-height:1.45}
   .form{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
   input,select{flex:1;min-width:85px;background:#111318;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:9px 11px;color:#fff;font-size:13px;outline:none}
   .btn{background:#7EE823;color:#000;border:none;border-radius:12px;padding:9px 14px;font-weight:800;font-size:13px;cursor:pointer}
@@ -42,7 +42,6 @@
   .nav{position:fixed;bottom:0;left:0;right:0;background:#111317;border-top:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-around;padding:8px 4px;z-index:20}
   .nav button{background:none;border:none;color:rgba(255,255,255,.55);font-size:11.5px;font-weight:700;padding:7px 10px;border-radius:10px;cursor:pointer}
   .nav button.act{background:rgba(255,255,255,.12);color:#fff}
-  .fab{position:fixed;right:14px;bottom:68px;background:linear-gradient(135deg,#FB7185,#F43F5E);color:#fff;text-decoration:none;border-radius:99px;padding:11px 16px;font-size:13px;font-weight:800;box-shadow:0 8px 24px rgba(244,63,94,.45);z-index:25}
   .banner{font-size:11px;color:#FCD34D;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:8px 10px;margin-bottom:10px}
 </style>
 </head>
@@ -59,18 +58,17 @@
     </div>
   </div>
   <div class="mod-bar">
-    <button class="mod-btn" id="m-work" onclick="setMod('work')">💼 CDHU</button>
-    <button class="mod-btn" id="m-home" onclick="setMod('home')">🏠 Home</button>
-    <button class="mod-btn" id="m-dev" onclick="setMod('dev')">🚀 Dev</button>
+    <button class="mod-btn" id="m-work" onclick="setMod('work')">CDHU</button>
+    <button class="mod-btn" id="m-home" onclick="setMod('home')">Home</button>
+    <button class="mod-btn" id="m-dev" onclick="setMod('dev')">Dev</button>
   </div>
   <div id="banner"></div>
   <div id="content"></div>
-  <a class="fab" href="./gasto.html">💸 + Gasto</a>
   <div class="nav" id="nav"></div>
 <script>
 const CFG_KEY="drakars_cloud_cfg", DATA_KEY="drakars_cloud_data", MOD_KEY="drakars_mob_mod";
 const BANK_COLORS={nubank:"#820AD1",itau:"#EC7000",bradesco:"#CC092F",santander:"#EC0000",bb:"#FFCC00",caixa:"#005CA9",inter:"#FF7A00",c6:"#27272A",btg:"#001E62",xp:"#FFD000",mercadopago:"#009EE3",picpay:"#21C25E",pagbank:"#00A868",sicredi:"#3FA110",sicoob:"#003641",wise:"#9FE870",nomad:"#C9A227"};
-let mod=localStorage.getItem(MOD_KEY)||"home", subTab="", cfg=null, data=null, txPm="credit", txTarget="";
+let mod=localStorage.getItem(MOD_KEY)||"work", subTab="", cfg=null, data=null;
 
 function readConfig(){
   if(location.hash && location.hash.length>1){
@@ -79,7 +77,8 @@ function readConfig(){
     if(gistId && token){
       const next={gistId,token};
       localStorage.setItem(CFG_KEY, JSON.stringify(next));
-      history.replaceState(null,"",location.pathname+location.search);
+      const isStandalone=(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
+      if(isStandalone) history.replaceState(null,"",location.pathname+location.search);
       return next;
     }
   }
@@ -144,25 +143,6 @@ async function addTask(e, ws){
 }
 async function toggleTask(id){ await pushOp("toggle_task",{id},(d)=>{ d.tasks=(d.tasks||[]).map(t=>t.id===id?{...t,completed:!t.completed}:t); }); }
 async function checkinHabit(id){ await pushOp("checkin_habit",{id},(d)=>{ d.habits=(d.habits||[]).map(h=>h.id===id?{...h,doneToday:!h.doneToday}:h); }); }
-async function addTx(e){
-  e.preventDefault();
-  const title=document.getElementById("txTitle").value.trim() || document.getElementById("txCat").value;
-  const amount=parseFloat(String(document.getElementById("txAmount").value).replace(",","."));
-  const type=document.getElementById("txType").value;
-  const owner=document.getElementById("txOwner").value;
-  const cat=document.getElementById("txCat").value;
-  const inst=Number((document.getElementById("txInst")&&document.getElementById("txInst").value)||1);
-  if(!title || isNaN(amount) || amount<=0) return;
-  document.getElementById("txTitle").value="";
-  document.getElementById("txAmount").value="";
-  const date=new Date().toISOString().slice(0,10);
-  const accountId=txTarget.startsWith("acc:")?txTarget.slice(4):undefined;
-  const cardId=txTarget.startsWith("card:")?txTarget.slice(5):undefined;
-  await pushOp("add_transaction",{title,amount,type,category:cat,owner,date,paymentMethod:txPm,accountId,cardId,installments:inst,paid:txPm==="credit"?false:true},(d)=>{
-    d.transactions=d.transactions||[];
-    d.transactions.unshift({id:"tx-"+Date.now(),title,amount,type,category:cat,owner,date,paymentMethod:txPm,accountId,cardId,paid:txPm==="credit"?false:true});
-  });
-}
 async function addCal(e){
   e.preventDefault();
   const title=document.getElementById("calTitle").value.trim();
@@ -224,17 +204,29 @@ function render(warn){
   });
   const tabsByMod={
     work:[["tasks","Tarefas"],["systems","Sistemas CDHU"],["agenda","Agenda"],["pc","Drakars IA"]],
-    home:[["finance","Financeiro"],["cal","Calendário"],["shop","Compras"],["tasks","Tarefas"]],
+    home:[["tasks","Tarefas"],["cal","Calendário"],["shop","Compras"],["finance","Espelho Azul"]],
     dev:[["leads","Leads"],["reels","Reels"],["tasks","Tarefas Dev"],["pc","Drakars IA"]]
   };
-  const tabs=tabsByMod[mod]||tabsByMod.home;
+  const tabs=tabsByMod[mod]||tabsByMod.work;
   if(!subTab || !tabs.some(x=>x[0]===subTab)) subTab=tabs[0][0];
   document.getElementById("nav").innerHTML=tabs.map(([id,lbl])=>`<button class="${subTab===id?'act':''}" onclick="setSub('${id}')">${lbl}</button>`).join("");
 
   const el=document.getElementById("content"), ban=document.getElementById("banner");
   if(!cfg){
     ban.innerHTML="";
-    el.innerHTML=`<div class="card"><div class="ttl" style="margin-bottom:8px">Parear com seu Drakars</div><div class="sub" style="margin-bottom:10px">Escaneie o QR Code na aba <b>Celular</b> do Drakars no PC:</div><form onsubmit="saveManualCfg(event)"><input id="cfgGist" placeholder="Gist ID" style="margin-bottom:8px" /><input id="cfgTok" type="password" placeholder="GitHub Token" style="margin-bottom:8px" /><button class="btn" type="submit" style="width:100%">Conectar</button></form></div>`;
+    el.innerHTML=`
+      <div class="card">
+        <div class="ttl" style="margin-bottom:6px">Conectar ao seu Drakars</div>
+        <div class="sub" style="margin-bottom:10px">Nenhuma conta ou senha precisa ser criada aqui — basta escanear novamente o <b>QR Code na aba Celular do Drakars no PC</b>.<br><br>Dica no iPhone: depois de escanear, toque em <b>Compartilhar → Adicionar à Tela de Início</b> na mesma aba para salvar o pareamento automático.</div>
+        <details>
+          <summary class="sub" style="cursor:pointer;color:#9AF549;font-weight:700">Conexão manual (avançado)</summary>
+          <form onsubmit="saveManualCfg(event)" style="margin-top:10px">
+            <input id="cfgGist" placeholder="Gist ID" style="margin-bottom:8px;width:100%" />
+            <input id="cfgTok" type="password" placeholder="Token GitHub (gist)" style="margin-bottom:8px;width:100%" />
+            <button class="btn" type="submit" style="width:100%">Conectar</button>
+          </form>
+        </details>
+      </div>`;
     return;
   }
   if(!data){ el.innerHTML='<div class="card"><div class="sub">Carregando dados da nuvem...</div></div>'; return; }
@@ -258,44 +250,23 @@ function render(warn){
     const exp=txs.filter(t=>t.type==="expense").reduce((a,b)=>a+Number(b.amount||0),0)+(data.recurringBills||[]).reduce((a,b)=>a+Number(b.amount||0),0);
     const bal=inc-exp;
     const banks=data.bankAccounts||[], cards=data.creditCards||[], goals=data.savingsGoals||[];
-    const origins=txPm==="credit"?cards.map(c=>`<option value="card:${c.id}">💳 ${esc(c.name)}</option>`):txPm==="debit"||txPm==="pix"?banks.map(b=>`<option value="acc:${b.id}">🏦 ${esc(b.name)}</option>`):[];
-    if(txPm==="credit" && cards.length && !txTarget.startsWith("card:")) txTarget="card:"+cards[0].id;
-    if((txPm==="debit"||txPm==="pix") && banks.length && !txTarget.startsWith("acc:")) txTarget="acc:"+banks[0].id;
 
     el.innerHTML=`
       <div class="card">
-        <div class="sub" style="margin-bottom:8px">FINANCEIRO DO CASAL (${month}) • Você & ${esc(partner)}</div>
+        <div class="sub" style="margin-bottom:6px;color:#FDA4AF;font-weight:700">ESPELHO DO NÓS NO AZUL (${month}) • Você & ${esc(partner)}</div>
+        <div class="sub" style="margin-bottom:8px">Visualização automática do financeiro do casal. Para lançar gastos ou usar o atalho 2 Toques Atrás, acesse o app Nós no Azul.</div>
         <div class="kpi-grid">
           <div class="kpi"><div class="lbl">Entradas${fixedInc>0?' (+Fixo)':''}</div><div class="val" style="color:#9AF549">${fmtBrl(inc)}</div></div>
           <div class="kpi"><div class="lbl">Saídas + Fixas</div><div class="val" style="color:#FDA4AF">${fmtBrl(exp)}</div></div>
           <div class="kpi"><div class="lbl">Saldo Livre</div><div class="val" style="color:${bal>=0?'#9AF549':'#F87171'}">${fmtBrl(bal)}</div></div>
         </div>
-        ${(banks.length||cards.length)?`<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px">${banks.map(b=>`<div style="min-width:128px;background:#1D2128;border-left:4px solid ${BANK_COLORS[b.bankKey]||'#7EE823'};border-radius:10px;padding:7px 9px"><div class="sub" style="margin:0;color:#fff;font-weight:700">${esc(b.name)}</div><div style="font-size:12px;font-weight:800;color:#9AF549;margin-top:2px">${fmtBrl(b.balance)}</div></div>`).join("")}${cards.map(c=>`<div style="min-width:136px;background:#1D2128;border-left:4px solid ${BANK_COLORS[c.bankKey]||'#FB7185'};border-radius:10px;padding:7px 9px"><div class="sub" style="margin:0;color:#fff;font-weight:700">💳 ${esc(c.name)}</div><div style="font-size:11px;font-weight:700;color:#FDA4AF;margin-top:2px">Fat: ${fmtBrl(c.monthUsed)}</div></div>`).join("")}</div>`:''}
+        ${(banks.length||cards.length)?`<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px">${banks.map(b=>`<div style="min-width:128px;background:#1D2128;border-left:4px solid ${BANK_COLORS[b.bankKey]||'#7EE823'};border-radius:10px;padding:7px 9px"><div class="sub" style="margin:0;color:#fff;font-weight:700">${esc(b.name)}</div><div style="font-size:12px;font-weight:800;color:#9AF549;margin-top:2px">${fmtBrl(b.balance)}</div></div>`).join("")}${cards.map(c=>`<div style="min-width:136px;background:#1D2128;border-left:4px solid ${BANK_COLORS[c.bankKey]||'#FB7185'};border-radius:10px;padding:7px 9px"><div class="sub" style="margin:0;color:#fff;font-weight:700">${esc(c.name)}</div><div style="font-size:11px;font-weight:700;color:#FDA4AF;margin-top:2px">Fat: ${fmtBrl(c.monthUsed)}</div></div>`).join("")}</div>`:''}
       </div>
-      <div class="card">
-        <div class="sub" style="margin-bottom:6px">LANÇAR GASTO / RECEITA</div>
-        <form class="form" onsubmit="addTx(event)">
-          <input id="txTitle" placeholder="Ex: Mercado, Uber..." style="flex:2" />
-          <input id="txAmount" type="text" inputmode="decimal" placeholder="R$" />
-          <select id="txType"><option value="expense">💸 Despesa</option><option value="income">💰 Receita</option></select>
-          <select id="txPm" onchange="txPm=this.value;txTarget='';render()">
-            <option value="credit" ${txPm==='credit'?'selected':''}>💳 Crédito</option>
-            <option value="debit" ${txPm==='debit'?'selected':''}>🏧 Débito</option>
-            <option value="pix" ${txPm==='pix'?'selected':''}>⚡ Pix</option>
-            <option value="cash" ${txPm==='cash'?'selected':''}>💵 Dinheiro</option>
-          </select>
-          ${origins.length?`<select onchange="txTarget=this.value">${origins.join("")}</select>`:''}
-          ${txPm==='credit'?`<select id="txInst"><option value="1">1x</option><option value="2">2x</option><option value="3">3x</option><option value="4">4x</option><option value="6">6x</option><option value="10">10x</option><option value="12">12x</option></select>`:''}
-          <select id="txCat"><option>Mercado</option><option>Alimentação</option><option>Transporte</option><option>Moradia</option><option>Saúde</option><option>Lazer</option><option>Assinaturas</option><option>Salário</option><option>Outros</option></select>
-          <select id="txOwner"><option value="casal">Casal</option><option value="eu">Você</option><option value="esposa">${esc(partner)}</option></select>
-          <button class="btn btn-rose" type="submit" style="width:100%">Salvar Lançamento</button>
-        </form>
-      </div>
-      ${goals.length?`<div class="card"><div class="sub" style="margin-bottom:6px">METAS DO CASAL</div>${goals.map(g=>{const pct=Math.min(100,Math.round((Number(g.currentAmount||0)/Math.max(1,Number(g.targetAmount||1)))*100));return `<div class="row" style="flex-direction:column;align-items:stretch;gap:5px"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700"><span>${esc(g.icon||'🎯')} ${esc(g.title)}</span><span style="color:#9AF549">${pct}%</span></div><div style="height:6px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden"><div style="height:100%;width:${Math.max(4,pct)}%;background:linear-gradient(90deg,#FB7185,#7EE823)"></div></div><div class="sub" style="margin:0">${fmtBrl(g.currentAmount)} de ${fmtBrl(g.targetAmount)}</div></div>`;}).join("")}</div>`:''}
-      <div class="card"><div class="sub" style="margin-bottom:6px">ÚLTIMOS LANÇAMENTOS</div>${txs.slice(0,10).map(t=>`<div class="row"><div class="ttl">${esc(t.title)}<div class="sub">${t.date} • ${esc(t.category)} • ${t.paymentMethod||''}</div></div><b style="color:${t.type==='income'?'#9AF549':'#FDA4AF'};font-size:12.5px">${t.type==='income'?'+':'-'} ${fmtBrl(t.amount)}</b></div>`).join("")||'<div class="sub">Sem lançamentos no mês</div>'}</div>`;
+      ${goals.length?`<div class="card"><div class="sub" style="margin-bottom:6px">METAS DO CASAL</div>${goals.map(g=>{const pct=Math.min(100,Math.round((Number(g.currentAmount||0)/Math.max(1,Number(g.targetAmount||1)))*100));return `<div class="row" style="flex-direction:column;align-items:stretch;gap:5px"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700"><span>${esc(g.title)}</span><span style="color:#9AF549">${pct}%</span></div><div style="height:6px;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden"><div style="height:100%;width:${Math.max(4,pct)}%;background:linear-gradient(90deg,#FB7185,#7EE823)"></div></div><div class="sub" style="margin:0">${fmtBrl(g.currentAmount)} de ${fmtBrl(g.targetAmount)}</div></div>`;}).join("")}</div>`:''}
+      <div class="card"><div class="sub" style="margin-bottom:6px">ÚLTIMOS LANÇAMENTOS REPLICADOS</div>${txs.slice(0,10).map(t=>`<div class="row"><div class="ttl">${esc(t.title)}<div class="sub">${t.date} • ${esc(t.category)} • ${t.paymentMethod||''}</div></div><b style="color:${t.type==='income'?'#9AF549':'#FDA4AF'};font-size:12.5px">${t.type==='income'?'+':'-'} ${fmtBrl(t.amount)}</b></div>`).join("")||'<div class="sub">Sem lançamentos no mês</div>'}</div>`;
   } else if(subTab==="cal"){
     const cals=(data.calendarEvents||[]).filter(c=>c.date>=today).slice(0,12);
-    el.innerHTML=`<div class="card"><div class="sub" style="margin-bottom:6px">CALENDÁRIO PESSOAL & CASAL</div><form class="form" onsubmit="addCal(event)"><input id="calTitle" placeholder="Compromisso..." style="flex:2" /><input id="calDate" type="date" value="${today}" /><input id="calTime" type="time" /><button class="btn btn-rose" type="submit">+</button></form>${cals.map(c=>`<div class="row"><div class="ttl">📅 ${esc(c.title)}<div class="sub">${c.date}${c.time?' • '+c.time:''} • ${c.person}</div></div></div>`).join("")||'<div class="sub">Sem próximos eventos</div>'}</div>`;
+    el.innerHTML=`<div class="card"><div class="sub" style="margin-bottom:6px">CALENDÁRIO PESSOAL & CASAL</div><form class="form" onsubmit="addCal(event)"><input id="calTitle" placeholder="Compromisso..." style="flex:2" /><input id="calDate" type="date" value="${today}" /><input id="calTime" type="time" /><button class="btn btn-rose" type="submit">+</button></form>${cals.map(c=>`<div class="row"><div class="ttl">${esc(c.title)}<div class="sub">${c.date}${c.time?' • '+c.time:''} • ${c.person}</div></div></div>`).join("")||'<div class="sub">Sem próximos eventos</div>'}</div>`;
   } else if(subTab==="shop"){
     const shops=data.shoppingList||[];
     el.innerHTML=`<div class="card"><div class="sub" style="margin-bottom:6px">LISTA DE COMPRAS</div><form class="form" onsubmit="addShop(event)"><input id="shopTitle" placeholder="Adicionar item..." /><button class="btn" type="submit">+</button></form>${shops.map(s=>`<div class="row"><button class="chk ${s.checked?'done':''}" onclick="toggleShop('${s.id}')">${s.checked?'✓':''}</button><div class="ttl ${s.checked?'done':''}">${esc(s.title)}<div class="sub">${s.category}</div></div></div>`).join("")||'<div class="sub">Lista vazia</div>'}</div>`;
@@ -307,16 +278,16 @@ function render(warn){
     el.innerHTML='<div class="card"><div class="sub" style="margin-bottom:6px">SISTEMAS CDHU</div>'+syss.map(s=>`<div class="row"><div class="ttl">${esc(s.name)}<div class="sub">${esc(s.detail)}</div></div><b style="color:${s.online?'#9AF549':'#F87171'};font-size:11px">${s.online?'ONLINE':'OFFLINE'}</b></div>`).join("")+'</div>';
   } else if(subTab==="agenda"){
     const rems=data.reminders||[], habs=data.habits||[];
-    el.innerHTML='<div class="card"><div class="sub" style="margin-bottom:6px">LEMBRETES</div>'+(rems.map(r=>`<div class="row"><div class="ttl">🔔 ${esc(r.title)}<div class="sub">${new Date(r.triggerAt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div></div></div>`).join("")||'<div class="sub">Sem lembretes</div>')+'</div><div class="card"><div class="sub" style="margin-bottom:6px">HÁBITOS DE HOJE</div>'+habs.map(h=>`<div class="row"><button class="chk ${h.doneToday?'done':''}" onclick="checkinHabit('${h.id}')">${h.doneToday?'✓':''}</button><div class="ttl">${h.icon} ${esc(h.title)}</div></div>`).join("")+'</div>';
+    el.innerHTML='<div class="card"><div class="sub" style="margin-bottom:6px">LEMBRETES</div>'+(rems.map(r=>`<div class="row"><div class="ttl">${esc(r.title)}<div class="sub">${new Date(r.triggerAt).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"})}</div></div></div>`).join("")||'<div class="sub">Sem lembretes</div>')+'</div><div class="card"><div class="sub" style="margin-bottom:6px">HÁBITOS DE HOJE</div>'+habs.map(h=>`<div class="row"><button class="chk ${h.doneToday?'done':''}" onclick="checkinHabit('${h.id}')">${h.doneToday?'✓':''}</button><div class="ttl">${esc(h.title)}</div></div>`).join("")+'</div>';
   } else if(subTab==="leads"){
     const leads=data.leads||[];
-    el.innerHTML=`<div class="card"><div class="sub" style="margin-bottom:6px">LEADS & CLIENTES (${leads.length})</div><form class="form" onsubmit="addLead(event)"><input id="leadName" placeholder="Nome..." style="flex:2" /><input id="leadBiz" placeholder="Nicho" /><input id="leadVal" type="number" placeholder="R$" /><button class="btn btn-dev" type="submit">+</button></form>${leads.map(l=>`<div class="row"><div class="ttl">🚀 ${esc(l.name)}${l.business?' ('+esc(l.business)+')':''}<div class="sub">${esc(l.projectType)} • ${esc(l.status)} • ${fmtBrl(l.estimatedValue)}</div></div></div>`).join("")||'<div class="sub">Sem leads ainda</div>'}</div>`;
+    el.innerHTML=`<div class="card"><div class="sub" style="margin-bottom:6px">LEADS & CLIENTES (${leads.length})</div><form class="form" onsubmit="addLead(event)"><input id="leadName" placeholder="Nome..." style="flex:2" /><input id="leadBiz" placeholder="Nicho" /><input id="leadVal" type="number" placeholder="R$" /><button class="btn btn-dev" type="submit">+</button></form>${leads.map(l=>`<div class="row"><div class="ttl">${esc(l.name)}${l.business?' ('+esc(l.business)+')':''}<div class="sub">${esc(l.projectType)} • ${esc(l.status)} • ${fmtBrl(l.estimatedValue)}</div></div></div>`).join("")||'<div class="sub">Sem leads ainda</div>'}</div>`;
   } else if(subTab==="reels"){
     const reels=data.reels||[];
-    el.innerHTML=`<div class="card"><div class="sub" style="margin-bottom:6px">IDEIAS DE REELS (${reels.length})</div><form class="form" onsubmit="addReel(event)"><input id="reelTitle" placeholder="Ideia..." style="flex:2" /><input id="reelHook" placeholder="Gancho 3s" /><button class="btn btn-dev" type="submit">+</button></form>${reels.map(r=>`<div class="row"><div class="ttl">🎬 ${esc(r.title)}<div class="sub">${esc(r.hook)} • ${esc(r.status)}</div></div></div>`).join("")||'<div class="sub">Sem ideias de Reels</div>'}</div>`;
+    el.innerHTML=`<div class="card"><div class="sub" style="margin-bottom:6px">IDEIAS DE REELS (${reels.length})</div><form class="form" onsubmit="addReel(event)"><input id="reelTitle" placeholder="Ideia..." style="flex:2" /><input id="reelHook" placeholder="Gancho 3s" /><button class="btn btn-dev" type="submit">+</button></form>${reels.map(r=>`<div class="row"><div class="ttl">${esc(r.title)}<div class="sub">${esc(r.hook)} • ${esc(r.status)}</div></div></div>`).join("")||'<div class="sub">Sem ideias de Reels</div>'}</div>`;
   } else if(subTab==="pc"){
     const rep=data.lastMobileReply;
-    el.innerHTML=`<div class="card"><div class="sub" style="margin-bottom:6px">ENVIAR COMANDO AO DRAKARS</div><form class="form" onsubmit="sendCmd(event)"><input id="cmdInp" placeholder="Ex: gastei 80 no mercado..." /><button class="btn" type="submit">Enviar</button></form>${rep?'<div class="sub" style="margin-top:6px"><b>'+esc(rep.prompt)+'</b><br><span style="color:#fff">'+esc(rep.reply)+'</span></div>':''}</div>`;
+    el.innerHTML=`<div class="card"><div class="sub" style="margin-bottom:6px">ENVIAR COMANDO AO DRAKARS</div><form class="form" onsubmit="sendCmd(event)"><input id="cmdInp" placeholder="Ex: criar tarefa revisar chamado CDHU..." /><button class="btn" type="submit">Enviar</button></form>${rep?'<div class="sub" style="margin-top:6px"><b>'+esc(rep.prompt)+'</b><br><span style="color:#fff">'+esc(rep.reply)+'</span></div>':''}</div>`;
   }
 }
 function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}

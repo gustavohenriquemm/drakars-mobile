@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8" />
@@ -12,12 +12,72 @@
     href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet"
   />
+  <link rel="manifest" href="./manifest-azul.json" />
   <link rel="stylesheet" href="./financeiro.css" />
 </head>
 <body>
   <canvas id="confettiCanvas"></canvas>
 
-  <div class="app-shell">
+  <!-- Access Password Gate -->
+  <section id="authGate" class="auth-gate" aria-label="Acesso protegido">
+    <div id="authCard" class="auth-card">
+      <div class="auth-brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+            <path
+              d="M4 15L16 5L28 15V26.5C28 27.6 27.1 28.5 26 28.5H6C4.9 28.5 4 27.6 4 26.5V15Z"
+              stroke="#FFF6F0"
+              stroke-width="2.2"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M16 23.2C16 23.2 10.6 19.6 10.6 15.8C10.6 13.9 12.1 12.5 13.9 12.5C14.9 12.5 15.6 13 16 13.7C16.4 13 17.1 12.5 18.1 12.5C19.9 12.5 21.4 13.9 21.4 15.8C21.4 19.6 16 23.2 16 23.2Z"
+              fill="#FFD6B8"
+            />
+          </svg>
+        </div>
+        <div>
+          <h2 class="auth-title">Nós no Azul</h2>
+          <p class="auth-subtitle">Área privada • Digite a senha de acesso para continuar</p>
+        </div>
+      </div>
+
+      <form id="authForm" class="auth-form">
+        <label for="authPasswordInput" class="auth-label">Senha de acesso</label>
+        <div class="auth-input-wrap">
+          <span class="auth-lock-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <input
+            type="password"
+            id="authPasswordInput"
+            class="auth-input"
+            placeholder="Digite seu código ou senha"
+            autocomplete="current-password"
+            required
+          />
+          <button
+            type="button"
+            id="authToggleEye"
+            class="auth-eye-btn"
+            aria-label="Mostrar ou ocultar senha"
+            title="Mostrar/ocultar senha"
+          >
+            <svg id="authEyeOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+
+        <p id="authError" class="auth-error hidden" role="alert"></p>
+
+        <button type="submit" id="authSubmitBtn" class="auth-submit-btn">
+          <span>Entrar no painel</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <div class="app-shell auth-locked">
     <!-- Left Terracotta Sidebar -->
     <aside id="sidebar" class="sidebar">
       <div class="brand-box">
@@ -37,7 +97,7 @@
         </div>
         <div>
           <div id="brandTitle" class="brand-name">Nós no Azul</div>
-          <div class="brand-sub">Finanças a dois • Drakars</div>
+          <div class="brand-sub">Finanças a dois</div>
         </div>
       </div>
 
@@ -87,6 +147,10 @@
           <span id="syncDot" class="sync-dot"></span>
           <span id="syncText">Conectando...</span>
         </div>
+        <button type="button" id="lockAppBtn" class="lock-btn" title="Bloquear e sair da sessão">
+          <span class="svg-ico" style="width:14px;height:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+          <span>Bloquear</span>
+        </button>
       </div>
     </aside>
 

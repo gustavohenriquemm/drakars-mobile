@@ -408,17 +408,26 @@
   }
 
   // -------------------- Sync Engine (Local / Cloud / Offline) --------------------
+  let inFlightActions = 0;
+  let lastLocalMutationAt = 0;
+
   function loadCloudCreds() {
     const hash = window.location.hash.replace(/^#/, '');
     if (hash) {
       const hp = new URLSearchParams(hash);
-      const gistId = hp.get('gist') || '';
-      const token = hp.get('token') || '';
+      const gistId = (hp.get('gist') || '').trim();
+      const token = (hp.get('token') || '').trim();
       if (gistId && token) {
         const creds = { gistId, token };
         try {
           localStorage.setItem(CLOUD_STORAGE_KEY, JSON.stringify(creds));
         } catch {}
+        const isStandalone =
+          (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+          window.navigator.standalone === true;
+        if (isStandalone) {
+          history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
         return creds;
       }
     }
@@ -460,34 +469,52 @@
     };
   }
 
-  function applyLocalOptimisticOp(type, p) {
+  function ensureStateArrays(target) {
+    if (!target || typeof target !== 'object') return;
+    if (!Array.isArray(target.transactions)) target.transactions = [];
+    if (!Array.isArray(target.recurringBills)) target.recurringBills = [];
+    if (!Array.isArray(target.fixedIncomes)) target.fixedIncomes = [];
+    if (!Array.isArray(target.savingsGoals)) target.savingsGoals = [];
+    if (!Array.isArray(target.bankAccounts)) target.bankAccounts = [];
+    if (!Array.isArray(target.creditCards)) target.creditCards = [];
+    if (!Array.isArray(target.categoryBudgets)) target.categoryBudgets = [];
+    if (!Array.isArray(target.calendarEvents)) target.calendarEvents = [];
+  }
+
+  function applyOpToState(target, type, p) {
+    ensureStateArrays(target);
     const curM = currentMonthKey();
     if (type === 'add_transaction') {
       const n = p.type === 'expense' && Number(p.installments) > 1 ? Math.min(24, Number(p.installments)) : 1;
       const total = Math.max(0, Number(p.amount) || 0);
       const start = p.date || todayIso();
+      const baseId = p.id || uid();
       if (n === 1) {
-        appState.transactions.unshift({
-          id: uid(),
-          title: p.title,
-          amount: total,
-          type: p.type || 'expense',
-          category: p.category || 'Outros',
-          owner: p.owner || 'casal',
-          date: start,
-          paid: typeof p.paid === 'boolean' ? p.paid : p.paymentMethod !== 'credit',
-          paymentMethod: p.paymentMethod || undefined,
-          accountId: p.accountId || undefined,
-          cardId: p.cardId || undefined,
-          notes: p.notes || undefined,
-        });
+        if (!target.transactions.some((t) => t.id === baseId)) {
+          target.transactions.unshift({
+            id: baseId,
+            title: p.title,
+            amount: total,
+            type: p.type || 'expense',
+            category: p.category || 'Outros',
+            owner: p.owner || 'casal',
+            date: start,
+            paid: typeof p.paid === 'boolean' ? p.paid : p.paymentMethod !== 'credit',
+            paymentMethod: p.paymentMethod || undefined,
+            accountId: p.accountId || undefined,
+            cardId: p.cardId || undefined,
+            notes: p.notes || undefined,
+          });
+        }
       } else {
-        const slice = Math.round((total / n) * 100) / 100;
+        const baseSlice = Math.floor((total / n) * 100) / 100;
+        const remainder = Number((total - baseSlice * n).toFixed(2));
         for (let i = 0; i < n; i++) {
-          appState.transactions.unshift({
-            id: uid(),
+          const sliceAmt = i === 0 ? Number((baseSlice + remainder).toFixed(2)) : baseSlice;
+          target.transactions.unshift({
+            id: `${baseId}-${i + 1}`,
             title: `${p.title} (${i + 1}/${n})`,
-            amount: slice,
+            amount: sliceAmt,
             type: 'expense',
             category: p.category || 'Outros',
             owner: p.owner || 'casal',
@@ -502,11 +529,11 @@
         }
       }
     } else if (type === 'toggle_transaction_paid') {
-      appState.transactions = appState.transactions.map((t) =>
+      target.transactions = target.transactions.map((t) =>
         t.id === p.id ? { ...t, paid: !t.paid } : t
       );
     } else if (type === 'delete_transaction') {
-      appState.transactions = appState.transactions.filter((t) => t.id !== p.id);
+      target.transactions = target.transactions.filter((t) => t.id !== p.id);
     } else if (type === 'save_bill') {
       const item = {
         id: p.id || uid(),
@@ -518,12 +545,12 @@
         accountId: p.accountId || undefined,
         paidMonths: [],
       };
-      const idx = appState.recurringBills.findIndex((b) => b.id === item.id);
-      if (idx >= 0) appState.recurringBills[idx] = { ...appState.recurringBills[idx], ...item };
-      else appState.recurringBills.push(item);
+      const idx = target.recurringBills.findIndex((b) => b.id === item.id);
+      if (idx >= 0) target.recurringBills[idx] = { ...target.recurringBills[idx], ...item };
+      else target.recurringBills.push(item);
     } else if (type === 'toggle_bill_paid') {
       const m = p.monthKey || curM;
-      appState.recurringBills = appState.recurringBills.map((b) => {
+      target.recurringBills = target.recurringBills.map((b) => {
         if (b.id !== p.id) return b;
         const paidMonths = Array.isArray(b.paidMonths) ? b.paidMonths : [];
         return {
@@ -532,7 +559,7 @@
         };
       });
     } else if (type === 'delete_bill') {
-      appState.recurringBills = appState.recurringBills.filter((b) => b.id !== p.id);
+      target.recurringBills = target.recurringBills.filter((b) => b.id !== p.id);
     } else if (type === 'save_fixed_income') {
       const item = {
         id: p.id || uid(),
@@ -544,22 +571,22 @@
         active: p.active !== false,
         creditedMonths: [],
       };
-      const idx = appState.fixedIncomes.findIndex((f) => f.id === item.id);
-      if (idx >= 0) appState.fixedIncomes[idx] = { ...appState.fixedIncomes[idx], ...item };
-      else appState.fixedIncomes.push(item);
+      const idx = target.fixedIncomes.findIndex((f) => f.id === item.id);
+      if (idx >= 0) target.fixedIncomes[idx] = { ...target.fixedIncomes[idx], ...item };
+      else target.fixedIncomes.push(item);
     } else if (type === 'toggle_fixed_income_active') {
-      appState.fixedIncomes = appState.fixedIncomes.map((f) =>
+      target.fixedIncomes = target.fixedIncomes.map((f) =>
         f.id === p.id ? { ...f, active: !f.active } : f
       );
     } else if (type === 'toggle_fixed_income_credited') {
       const m = p.monthKey || curM;
-      appState.fixedIncomes = appState.fixedIncomes.map((f) => {
+      target.fixedIncomes = target.fixedIncomes.map((f) => {
         if (f.id !== p.id) return f;
         const cm = Array.isArray(f.creditedMonths) ? f.creditedMonths : [];
         return { ...f, creditedMonths: cm.includes(m) ? cm.filter((x) => x !== m) : [...cm, m] };
       });
     } else if (type === 'delete_fixed_income') {
-      appState.fixedIncomes = appState.fixedIncomes.filter((f) => f.id !== p.id);
+      target.fixedIncomes = target.fixedIncomes.filter((f) => f.id !== p.id);
     } else if (type === 'save_goal') {
       const item = {
         id: p.id || uid(),
@@ -572,17 +599,17 @@
         targetDate: p.targetDate || undefined,
         owner: p.owner || 'casal',
       };
-      const idx = appState.savingsGoals.findIndex((g) => g.id === item.id);
-      if (idx >= 0) appState.savingsGoals[idx] = { ...appState.savingsGoals[idx], ...item };
-      else appState.savingsGoals.push(item);
+      const idx = target.savingsGoals.findIndex((g) => g.id === item.id);
+      if (idx >= 0) target.savingsGoals[idx] = { ...target.savingsGoals[idx], ...item };
+      else target.savingsGoals.push(item);
     } else if (type === 'contribute_goal') {
-      appState.savingsGoals = appState.savingsGoals.map((g) =>
+      target.savingsGoals = target.savingsGoals.map((g) =>
         g.id === p.id
           ? { ...g, currentAmount: Math.max(0, Number(g.currentAmount || 0) + Number(p.deltaAmount || 0)) }
           : g
       );
     } else if (type === 'delete_goal') {
-      appState.savingsGoals = appState.savingsGoals.filter((g) => g.id !== p.id);
+      target.savingsGoals = target.savingsGoals.filter((g) => g.id !== p.id);
     } else if (type === 'save_bank') {
       const bal = Number(p.initialBalance) || 0;
       const item = {
@@ -594,11 +621,11 @@
         initialBalance: bal,
         balance: bal,
       };
-      const idx = appState.bankAccounts.findIndex((a) => a.id === item.id);
-      if (idx >= 0) appState.bankAccounts[idx] = { ...appState.bankAccounts[idx], ...item };
-      else appState.bankAccounts.push(item);
+      const idx = target.bankAccounts.findIndex((a) => a.id === item.id);
+      if (idx >= 0) target.bankAccounts[idx] = { ...target.bankAccounts[idx], ...item };
+      else target.bankAccounts.push(item);
     } else if (type === 'delete_bank') {
-      appState.bankAccounts = appState.bankAccounts.filter((a) => a.id !== p.id);
+      target.bankAccounts = target.bankAccounts.filter((a) => a.id !== p.id);
     } else if (type === 'save_card') {
       const item = {
         id: p.id || uid(),
@@ -612,42 +639,45 @@
         dueDay: Number(p.dueDay) || 12,
         owner: p.owner || 'casal',
       };
-      const idx = appState.creditCards.findIndex((c) => c.id === item.id);
-      if (idx >= 0) appState.creditCards[idx] = { ...appState.creditCards[idx], ...item };
-      else appState.creditCards.push(item);
+      const idx = target.creditCards.findIndex((c) => c.id === item.id);
+      if (idx >= 0) target.creditCards[idx] = { ...target.creditCards[idx], ...item };
+      else target.creditCards.push(item);
     } else if (type === 'delete_card') {
-      appState.creditCards = appState.creditCards.filter((c) => c.id !== p.id);
+      target.creditCards = target.creditCards.filter((c) => c.id !== p.id);
     } else if (type === 'pay_card_invoice') {
       const m = p.monthKey || curM;
-      appState.transactions = appState.transactions.map((t) =>
+      target.transactions = target.transactions.map((t) =>
         t.cardId === p.cardId && t.date.startsWith(m) ? { ...t, paid: true } : t
       );
     } else if (type === 'save_budget') {
-      const idx = appState.categoryBudgets.findIndex(
+      const idx = target.categoryBudgets.findIndex(
         (b) => b.category.toLowerCase() === String(p.category || '').toLowerCase()
       );
-      if (idx >= 0) appState.categoryBudgets[idx].monthlyLimit = Number(p.monthlyLimit) || 0;
-      else appState.categoryBudgets.push({ id: uid(), category: p.category, monthlyLimit: Number(p.monthlyLimit) || 0 });
+      if (idx >= 0) target.categoryBudgets[idx].monthlyLimit = Number(p.monthlyLimit) || 0;
+      else target.categoryBudgets.push({ id: p.id || uid(), category: p.category, monthlyLimit: Number(p.monthlyLimit) || 0 });
     } else if (type === 'delete_budget') {
-      appState.categoryBudgets = appState.categoryBudgets.filter((b) => b.id !== p.id);
+      target.categoryBudgets = target.categoryBudgets.filter((b) => b.id !== p.id);
     } else if (type === 'add_calendar_event') {
-      appState.calendarEvents.unshift({
-        id: uid(),
-        title: p.title,
-        date: p.date || todayIso(),
-        time: p.time || '',
-        category: p.category || 'casal',
-        person: p.person || 'casal',
-      });
+      const evId = p.id || uid();
+      if (!target.calendarEvents.some((e) => e.id === evId)) {
+        target.calendarEvents.unshift({
+          id: evId,
+          title: p.title,
+          date: p.date || todayIso(),
+          time: p.time || '',
+          category: p.category || 'casal',
+          person: p.person || 'casal',
+        });
+      }
     } else if (type === 'delete_calendar_event') {
-      appState.calendarEvents = appState.calendarEvents.filter((e) => e.id !== p.id);
+      target.calendarEvents = target.calendarEvents.filter((e) => e.id !== p.id);
     } else if (type === 'update_finance_profile') {
-      if (p.userName) appState.userName = p.userName;
-      if (p.partnerName) appState.partnerName = p.partnerName;
-      if (p.financeBrandName) appState.financeBrandName = p.financeBrandName;
-      if (typeof p.hisPhotoDataUrl === 'string') appState.hisPhotoDataUrl = p.hisPhotoDataUrl;
-      if (typeof p.herPhotoDataUrl === 'string') appState.herPhotoDataUrl = p.herPhotoDataUrl;
-      if (typeof p.couplePhotoDataUrl === 'string') appState.couplePhotoDataUrl = p.couplePhotoDataUrl;
+      if (p.userName) target.userName = p.userName;
+      if (p.partnerName) target.partnerName = p.partnerName;
+      if (p.financeBrandName) target.financeBrandName = p.financeBrandName;
+      if (typeof p.hisPhotoDataUrl === 'string') target.hisPhotoDataUrl = p.hisPhotoDataUrl;
+      if (typeof p.herPhotoDataUrl === 'string') target.herPhotoDataUrl = p.herPhotoDataUrl;
+      if (typeof p.couplePhotoDataUrl === 'string') target.couplePhotoDataUrl = p.couplePhotoDataUrl;
     }
   }
 
@@ -668,12 +698,14 @@
     }
 
     if (ui.cloudCreds) {
-      const ok = await pullCloudGist();
+      const ok = await pullCloudGist(true);
       if (ok) {
         ui.syncMode = 'cloud';
         updateSyncBadge();
         renderAll();
-        setInterval(pullCloudGist, 12000);
+        setInterval(() => {
+          if (!document.hidden) void pullCloudGist(false);
+        }, 12000);
         return;
       }
     }
@@ -701,18 +733,26 @@
     });
   }
 
-  async function pullCloudGist() {
+  async function pullCloudGist(forceRender = false) {
     if (!ui.cloudCreds) return false;
+    if (!forceRender && (inFlightActions > 0 || Date.now() - lastLocalMutationAt < 6000)) {
+      return false;
+    }
     try {
       const res = await fetch(`https://api.github.com/gists/${ui.cloudCreds.gistId}`, {
+        cache: 'no-store',
         headers: ghHeaders(ui.cloudCreds.token),
       });
       if (!res.ok) return false;
       const gist = await res.json();
       const content = gist.files && gist.files['drakars-sync.json'] && gist.files['drakars-sync.json'].content;
       if (!content) return false;
+      if (!forceRender && (inFlightActions > 0 || Date.now() - lastLocalMutationAt < 6000)) {
+        return false;
+      }
       const parsed = JSON.parse(content);
       appState = normalizeState(parsed);
+      if (!forceRender) renderAll();
       return true;
     } catch {
       return false;
@@ -720,12 +760,27 @@
   }
 
   async function dispatchAction(type, payload = {}) {
+    const opPayload = { ...payload };
+    const needsCreateId = [
+      'add_transaction',
+      'save_bill',
+      'save_fixed_income',
+      'save_goal',
+      'save_bank',
+      'save_card',
+      'save_budget',
+      'add_calendar_event',
+    ].includes(type);
+    if (needsCreateId && !opPayload.id) {
+      opPayload.id = uid();
+    }
+
     if (ui.syncMode === 'local' && localToken) {
       try {
         const res = await fetch(`/api/finance/action?token=${encodeURIComponent(localToken)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type, payload }),
+          body: JSON.stringify({ type, payload: opPayload }),
         });
         const data = await res.json();
         if (data.ok && data.state) {
@@ -736,25 +791,26 @@
       } catch {}
     }
 
-    applyLocalOptimisticOp(type, payload);
+    lastLocalMutationAt = Date.now();
+    applyOpToState(appState, type, opPayload);
     renderAll();
 
     if (ui.syncMode === 'cloud' && ui.cloudCreds) {
+      inFlightActions += 1;
       try {
         const getRes = await fetch(`https://api.github.com/gists/${ui.cloudCreds.gistId}`, {
+          cache: 'no-store',
           headers: ghHeaders(ui.cloudCreds.token),
         });
         if (getRes.ok) {
           const gist = await getRes.json();
           const curRaw = gist.files?.['drakars-sync.json']?.content || '{}';
           const curJson = JSON.parse(curRaw);
+          applyOpToState(curJson, type, opPayload);
           const pending = Array.isArray(curJson.pendingMobileOps) ? curJson.pendingMobileOps : [];
-          pending.push({ id: uid(), type, payload, createdAt: Date.now() });
+          pending.push({ id: uid(), type, payload: opPayload, createdAt: Date.now() });
           curJson.pendingMobileOps = pending;
-          // Also keep snapshot updated so phone/wife sees changes immediately before PC polls
-          if (type === 'update_finance_profile') {
-            Object.assign(curJson, payload);
-          }
+          curJson.updatedAt = Date.now();
           await fetch(`https://api.github.com/gists/${ui.cloudCreds.gistId}`, {
             method: 'PATCH',
             headers: ghHeaders(ui.cloudCreds.token),
@@ -762,9 +818,12 @@
               files: { 'drakars-sync.json': { content: JSON.stringify(curJson, null, 2) } },
             }),
           });
+          lastLocalMutationAt = Date.now();
         }
       } catch {
         toast('Salvo localmente; sincronizará ao reconectar.');
+      } finally {
+        inFlightActions = Math.max(0, inFlightActions - 1);
       }
     } else {
       try {
@@ -780,7 +839,7 @@
     if (!dot || !txt) return;
     dot.className = 'sync-dot';
     if (ui.syncMode === 'local') {
-      txt.textContent = 'Conectado ao Drakars (PC)';
+      txt.textContent = 'Conectado ao PC';
     } else if (ui.syncMode === 'cloud') {
       dot.classList.add('cloud');
       txt.textContent = 'Sincronizado via Nuvem';
@@ -1998,13 +2057,31 @@
     const hisName = appState.userName || 'Você';
     const herName = appState.partnerName || 'Esposa';
     const brand = appState.financeBrandName || 'Nós no Azul';
-    const shareLink =
-      appState.cloudFinanceUrl ||
-      (ui.cloudCreds
-        ? `https://gustavohenriquemm.github.io/drakars-mobile/financeiro.html#gist=${encodeURIComponent(
-            ui.cloudCreds.gistId
-          )}&token=${encodeURIComponent(ui.cloudCreds.token)}`
-        : '');
+    const credHash = ui.cloudCreds
+      ? `#gist=${encodeURIComponent(ui.cloudCreds.gistId)}&token=${encodeURIComponent(
+          ui.cloudCreds.token
+        )}`
+      : '';
+    const httpBaseUrl = window.location.protocol.startsWith('http')
+      ? `${window.location.origin}${window.location.pathname}`
+      : '';
+    const httpDirUrl = window.location.protocol.startsWith('http')
+      ? `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}`
+      : '';
+
+    const shareLink = appState.cloudFinanceUrl
+      ? credHash && !appState.cloudFinanceUrl.includes('#gist=')
+        ? `${appState.cloudFinanceUrl.split('#')[0]}${credHash}`
+        : appState.cloudFinanceUrl
+      : httpBaseUrl
+        ? `${httpBaseUrl}${credHash}`
+        : '';
+
+    const quickTapLink = httpDirUrl
+      ? `${httpDirUrl}gasto.html${credHash}`
+      : appState.cloudFinanceUrl
+        ? `${appState.cloudFinanceUrl.split('#')[0].replace(/\/(financeiro\.html)?$/, '')}/gasto.html${credHash}`
+        : '';
 
     return `
       <div class="view-enter grid-2">
@@ -2052,24 +2129,42 @@
         </div>
 
         <div class="card" style="display:flex;flex-direction:column;gap:12px">
-          <div class="card-title">${icoBadge('cloud')}<span>Sincronização Drakars &amp; Link para Esposa</span></div>
+          <div class="card-title">${icoBadge('cloud')}<span>App do Casal, Nuvem &amp; 2 Toques Atrás</span></div>
           <p style="font-size:13px;color:var(--muted);line-height:1.5">
             Modo atual: <strong>${esc(
               ui.syncMode === 'local'
-                ? 'Conectado direto ao Drakars no PC'
+                ? 'Conectado ao PC'
                 : ui.syncMode === 'cloud'
-                  ? 'Conectado ao GitHub Gist na Nuvem'
+                  ? 'Conectado à Nuvem do Casal'
                   : 'Navegador Local'
             )}</strong>
           </p>
           ${
             shareLink
               ? `<div>
-                  <label class="field-label">Link online (abre sincronizado no celular/PC da esposa)</label>
+                  <label class="field-label">Link do Nós no Azul (para celular e esposa)</label>
                   <div style="display:flex;gap:8px">
                     <input id="shareUrlBox" class="input" readonly value="${esc(shareLink)}" />
                     <button type="button" class="btn-primary" data-action="copy-share-link">Copiar</button>
                   </div>
+                </div>`
+              : ''
+          }
+          ${
+            quickTapLink
+              ? `<div style="border-top:1px dashed var(--border);padding-top:12px">
+                  <label class="field-label">Atalho 2 Toques Atrás (Gasto Rápido no Celular)</label>
+                  <div style="display:flex;gap:8px;margin-bottom:8px">
+                    <input id="quickTapUrlBox" class="input" readonly value="${esc(quickTapLink)}" />
+                    <button type="button" class="btn-primary" data-action="copy-quick-tap-link">Copiar</button>
+                  </div>
+                  <p style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:8px">
+                    <strong>iPhone:</strong> Atalhos → Abrir URLs (cole esse link) → Ajustes → Acessibilidade → Toque → Toque Atrás → Tocar Duas Vezes.<br />
+                    <strong>Android:</strong> Good Lock (RegiStar) ou Toque Rápido apontando para esse link.
+                  </p>
+                  <a class="btn-secondary" href="./gasto.html${esc(credHash)}" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none">
+                    ${ico('card', 14)}<span>Testar Gasto Rápido agora</span>
+                  </a>
                 </div>`
               : ''
           }
@@ -2567,12 +2662,18 @@
         userName: his,
         partnerName: her,
       });
-      toast('Perfil atualizado no painel e no Drakars!');
+      toast('Perfil atualizado!');
     } else if (act === 'copy-share-link') {
       const box = document.getElementById('shareUrlBox');
       if (box && navigator.clipboard) {
         await navigator.clipboard.writeText(box.value);
         toast('Link copiado! Pode enviar para sua esposa.');
+      }
+    } else if (act === 'copy-quick-tap-link') {
+      const box = document.getElementById('quickTapUrlBox');
+      if (box && navigator.clipboard) {
+        await navigator.clipboard.writeText(box.value);
+        toast('Link 2 Toques Atrás copiado!');
       }
     } else if (act === 'connect-cloud') {
       const gistId = document.getElementById('cfgGistInp')?.value?.trim() || '';
@@ -2580,7 +2681,7 @@
       if (!gistId || !token) return toast('Preencha o Gist ID e o Token.');
       ui.cloudCreds = { gistId, token };
       localStorage.setItem(CLOUD_STORAGE_KEY, JSON.stringify(ui.cloudCreds));
-      const ok = await pullCloudGist();
+      const ok = await pullCloudGist(true);
       if (ok) {
         ui.syncMode = 'cloud';
         updateSyncBadge();
@@ -2717,5 +2818,246 @@
     }
   });
 
-  initSync();
+  // -------------------- Access Password Gate --------------------
+  const AUTH_SESSION_LOCAL_KEY = 'nos_no_azul_unlocked_v1';
+  const DEFAULT_ACCESS_SHA256 =
+    '1f2daf985b1361b9d4012f33c3569ea893294e01b8aa64b9e0edd362eaee2abc';
+  let authInitializedSync = false;
+
+  // Compact pure-JS SHA-256 fallback when opened offline via non-HTTPS file://
+  function sha256Fallback(ascii) {
+    function rightRotate(value, amount) {
+      return (value >>> amount) | (value << (32 - amount));
+    }
+    const mathPow = Math.pow;
+    const maxWord = mathPow(2, 32);
+    let i, j;
+    let result = '';
+    const words = [];
+    const bytes = unescape(encodeURIComponent(ascii));
+    const asciiBitLength = bytes.length * 8;
+    const hash = (sha256Fallback.h = sha256Fallback.h || []);
+    const k = (sha256Fallback.k = sha256Fallback.k || []);
+    let primeCounter = k.length;
+    const isComposite = {};
+    for (let candidate = 2; primeCounter < 64; candidate++) {
+      if (!isComposite[candidate]) {
+        for (i = 0; i < 313; i += candidate) isComposite[i] = candidate;
+        hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+        k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+      }
+    }
+    const h = hash.slice(0, 8);
+    let padded = bytes + '\x80';
+    while ((padded.length % 64) - 56) padded += '\x00';
+    for (i = 0; i < padded.length; i++) {
+      j = padded.charCodeAt(i);
+      if (j >> 8) return '';
+      words[i >> 2] |= j << (((3 - i) % 4) * 8);
+    }
+    words[words.length] = (asciiBitLength / maxWord) | 0;
+    words[words.length] = asciiBitLength;
+    for (j = 0; j < words.length; ) {
+      const w = words.slice(j, (j += 16));
+      const oldHash = h.slice(0);
+      for (i = 0; i < 64; i++) {
+        const w15 = w[i - 15];
+        const w2 = w[i - 2];
+        const a = h[0],
+          e = h[4];
+        const temp1 =
+          h[7] +
+          (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) +
+          ((e & h[5]) ^ (~e & h[6])) +
+          k[i] +
+          (w[i] =
+            i < 16
+              ? w[i]
+              : (w[i - 16] +
+                  (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) +
+                  w[i - 7] +
+                  (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) |
+                0);
+        const temp2 =
+          (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) +
+          ((a & h[1]) ^ (a & h[2]) ^ (h[1] & h[2]));
+        h.unshift((temp1 + temp2) | 0);
+        h[4] = (h[4] + temp1) | 0;
+        h.pop();
+      }
+      for (i = 0; i < 8; i++) h[i] = (h[i] + oldHash[i]) | 0;
+    }
+    for (i = 0; i < 8; i++) {
+      for (j = 3; j + 1; j--) {
+        const b = (h[i] >> (j * 8)) & 255;
+        result += (b < 16 ? '0' : '') + b.toString(16);
+      }
+    }
+    return result;
+  }
+
+  async function computeSha256Hex(text) {
+    try {
+      if (window.crypto && window.crypto.subtle && typeof TextEncoder !== 'undefined') {
+        const data = new TextEncoder().encode(String(text || ''));
+        const buf = await window.crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(buf))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join('');
+      }
+    } catch {}
+    return sha256Fallback(String(text || ''));
+  }
+
+  function unlockApp() {
+    const gate = document.getElementById('authGate');
+    const shell = document.querySelector('.app-shell');
+    gate?.classList.add('hidden');
+    shell?.classList.remove('auth-locked');
+    if (!authInitializedSync) {
+      authInitializedSync = true;
+      initSync().then(() => {
+        if (qs.get('gasto') === '1') openTxModal();
+      });
+    }
+  }
+
+  function lockApp() {
+    const gate = document.getElementById('authGate');
+    const shell = document.querySelector('.app-shell');
+    const input = document.getElementById('authPasswordInput');
+    const errEl = document.getElementById('authError');
+    shell?.classList.add('auth-locked');
+    gate?.classList.remove('hidden');
+    if (errEl) {
+      errEl.textContent = '';
+      errEl.classList.add('hidden');
+    }
+    if (input instanceof HTMLInputElement) {
+      input.value = '';
+      setTimeout(() => input.focus(), 60);
+    }
+  }
+
+  async function initAuthGate() {
+    if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+      navigator.serviceWorker.register('./sw.js').catch(() => undefined);
+    }
+
+    const form = document.getElementById('authForm');
+    const card = document.getElementById('authCard');
+    const input = document.getElementById('authPasswordInput');
+    const eyeBtn = document.getElementById('authToggleEye');
+    const errEl = document.getElementById('authError');
+    const submitBtn = document.getElementById('authSubmitBtn');
+    const lockBtn = document.getElementById('lockAppBtn');
+
+    let serverAuthAvailable = false;
+
+    if (window.location.protocol.startsWith('http')) {
+      try {
+        const res = await fetch('/api/auth/session', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (typeof data.authenticated === 'boolean') {
+            serverAuthAvailable = true;
+            if (data.authenticated) {
+              unlockApp();
+            }
+          }
+        }
+      } catch {}
+    }
+
+    if (!serverAuthAvailable) {
+      try {
+        if (
+          localStorage.getItem(AUTH_SESSION_LOCAL_KEY) === DEFAULT_ACCESS_SHA256 ||
+          sessionStorage.getItem(AUTH_SESSION_LOCAL_KEY) === DEFAULT_ACCESS_SHA256
+        ) {
+          unlockApp();
+        }
+      } catch {}
+    }
+
+    eyeBtn?.addEventListener('click', () => {
+      if (!(input instanceof HTMLInputElement)) return;
+      input.type = input.type === 'password' ? 'text' : 'password';
+      input.focus();
+    });
+
+    lockBtn?.addEventListener('click', async () => {
+      try {
+        localStorage.removeItem(AUTH_SESSION_LOCAL_KEY);
+        sessionStorage.removeItem(AUTH_SESSION_LOCAL_KEY);
+      } catch {}
+      if (window.location.protocol.startsWith('http')) {
+        try {
+          await fetch('/api/auth/logout', { method: 'POST' });
+        } catch {}
+      }
+      lockApp();
+    });
+
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!(input instanceof HTMLInputElement)) return;
+      const password = input.value.trim();
+      if (!password) return;
+
+      if (errEl) {
+        errEl.textContent = '';
+        errEl.classList.add('hidden');
+      }
+      if (submitBtn instanceof HTMLButtonElement) submitBtn.disabled = true;
+
+      let ok = false;
+      let errMsg = 'Senha de acesso incorreta.';
+
+      if (serverAuthAvailable) {
+        try {
+          const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password }),
+          });
+          if (res.ok) {
+            ok = true;
+          } else {
+            const j = await res.json().catch(() => ({}));
+            if (j && j.error) errMsg = j.error;
+          }
+        } catch {
+          errMsg = 'Falha ao validar com o servidor.';
+        }
+      } else {
+        const digest = await computeSha256Hex(password);
+        if (digest === DEFAULT_ACCESS_SHA256) {
+          ok = true;
+          try {
+            localStorage.setItem(AUTH_SESSION_LOCAL_KEY, DEFAULT_ACCESS_SHA256);
+            sessionStorage.setItem(AUTH_SESSION_LOCAL_KEY, DEFAULT_ACCESS_SHA256);
+          } catch {}
+        }
+      }
+
+      if (submitBtn instanceof HTMLButtonElement) submitBtn.disabled = false;
+
+      if (ok) {
+        input.value = '';
+        unlockApp();
+      } else {
+        if (errEl) {
+          errEl.textContent = errMsg;
+          errEl.classList.remove('hidden');
+        }
+        card?.classList.remove('auth-shake');
+        void card?.offsetWidth;
+        card?.classList.add('auth-shake');
+        input.select();
+      }
+    });
+  }
+
+  initAuthGate();
 })();

@@ -12,7 +12,7 @@
   .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
   .brand{display:flex;align-items:center;gap:6px;font-weight:800;font-size:13px}
   .dot{width:7px;height:7px;border-radius:50%;background:#7EE823}
-  .gbtn{background:#FB7185;color:#fff;text-decoration:none;border-radius:99px;padding:4px 10px;font-size:10.5px;font-weight:800}
+  .gbtn{background:#7EE823;color:#000;text-decoration:none;border-radius:99px;padding:4px 10px;font-size:10.5px;font-weight:800}
   .grid{display:grid;grid-template-columns:1.05fr 1.2fr;gap:8px;flex:1;min-height:0}
   .panel{background:#16191E;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:9px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden}
   .lbl{font-size:9.5px;color:rgba(255,255,255,.5);font-weight:700;text-transform:uppercase}
@@ -26,7 +26,7 @@
 <body>
   <div class="top">
     <div class="brand"><img src="./icon.svg" width="16" height="16" alt="" /><span>Drakars</span><span class="dot" id="dot"></span></div>
-    <a class="gbtn" id="glink" href="./gasto.html">+ Gasto R$</a>
+    <a class="gbtn" id="glink" href="./">Abrir Drakars</a>
   </div>
   <div class="grid">
     <div class="panel" id="finPanel"></div>
@@ -41,7 +41,8 @@ function readCfg(){
     if(gistId && token){
       const c={gistId,token};
       localStorage.setItem(CFG_KEY,JSON.stringify(c));
-      history.replaceState(null,"",location.pathname+location.search);
+      const isStandalone=(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
+      if(isStandalone) history.replaceState(null,"",location.pathname+location.search);
       return c;
     }
   }
@@ -49,6 +50,10 @@ function readCfg(){
 }
 let cfg=readCfg(), data=null;
 try{data=JSON.parse(localStorage.getItem(DATA_KEY)||"null");}catch{}
+if(cfg){
+  const link=document.getElementById("glink");
+  if(link) link.setAttribute("href","./#gist="+encodeURIComponent(cfg.gistId)+"&token="+encodeURIComponent(cfg.token));
+}
 
 async function getGist(){
   if(!cfg) return null;
@@ -92,7 +97,7 @@ function render(){
 
   document.getElementById("finPanel").innerHTML=`
     <div>
-      <div class="lbl">Saldo (${month})</div>
+      <div class="lbl">Espelho Casal (${month})</div>
       <div class="big" style="color:${bal>=0?'#9AF549':'#F87171'}">${fmtBrl(bal)}</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:3px">
