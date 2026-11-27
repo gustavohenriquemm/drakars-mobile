@@ -14,13 +14,5 @@
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }
-  ],
-  "shortcuts": [
-    {
-      "name": "Lançar Gasto Rápido",
-      "short_name": "Gasto",
-      "description": "Abrir lançamento rápido de gasto com cartão e categoria",
-      "url": "./gasto.html"
-    }
   ]
 }

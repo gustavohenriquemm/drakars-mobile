@@ -408,33 +408,152 @@
   }
 
   // -------------------- Sync Engine (Local / Cloud / Offline) --------------------
+  const COOKIE_CLOUD_KEY = 'nos_no_azul_cloud_v1';
+  const IDB_CLOUD_NAME = 'nos_azul_persist_db';
+  const CACHE_CLOUD_NAME = 'nos-azul-persist-cfg-v1';
   let inFlightActions = 0;
   let lastLocalMutationAt = 0;
 
+  function saveCloudCookie(creds) {
+    try {
+      document.cookie = `${COOKIE_CLOUD_KEY}=${encodeURIComponent(JSON.stringify(creds))}; max-age=31536000; path=/; SameSite=Lax`;
+    } catch {}
+  }
+
+  function readCloudCookie() {
+    try {
+      const m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE_CLOUD_KEY + '=([^;]*)'));
+      if (m && m[1]) {
+        const parsed = JSON.parse(decodeURIComponent(m[1]));
+        if (parsed && parsed.gistId && parsed.token) return parsed;
+      }
+    } catch {}
+    return null;
+  }
+
+  function injectDynamicManifest(creds) {
+    try {
+      const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+      if (isIos || !window.location.protocol.startsWith('http')) return;
+      const hash = creds ? `#gist=${encodeURIComponent(creds.gistId)}&token=${encodeURIComponent(creds.token)}` : '';
+      const startUrl = `${window.location.origin}${window.location.pathname}${hash}`;
+      const manifest = {
+        name: 'Nós no Azul',
+        short_name: 'Nós no Azul',
+        start_url: startUrl,
+        scope: './',
+        display: 'standalone',
+        background_color: '#FAF5F0',
+        theme_color: '#7B2C1B',
+        icons: [{ src: `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}icon.svg`, sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }],
+      };
+      let link = document.querySelector('link[rel="manifest"]');
+      if (!link) {
+        link = document.createElement('link');
+        link.setAttribute('rel', 'manifest');
+        document.head.appendChild(link);
+      }
+      link.setAttribute('href', 'data:application/manifest+json;charset=utf-8,' + encodeURIComponent(JSON.stringify(manifest)));
+    } catch {}
+  }
+
+  function persistCloudCredsAll(creds) {
+    if (!creds || !creds.gistId || !creds.token) return;
+    try { localStorage.setItem(CLOUD_STORAGE_KEY, JSON.stringify(creds)); } catch {}
+    saveCloudCookie(creds);
+    injectDynamicManifest(creds);
+    try {
+      if (window.indexedDB) {
+        const req = indexedDB.open(IDB_CLOUD_NAME, 1);
+        req.onupgradeneeded = () => {
+          if (!req.result.objectStoreNames.contains('cfg')) req.result.createObjectStore('cfg');
+        };
+        req.onsuccess = () => {
+          try {
+            const tx = req.result.transaction('cfg', 'readwrite');
+            tx.objectStore('cfg').put(creds, 'creds');
+          } catch {}
+        };
+      }
+    } catch {}
+    try {
+      if ('caches' in window) {
+        caches.open(CACHE_CLOUD_NAME).then((c) => c.put('/__nos_cfg', new Response(JSON.stringify(creds)))).catch(() => undefined);
+      }
+    } catch {}
+  }
+
+  async function restoreCloudCredsAsync() {
+    let found = null;
+    try {
+      if (window.indexedDB) {
+        found = await new Promise((resolve) => {
+          const req = indexedDB.open(IDB_CLOUD_NAME, 1);
+          req.onupgradeneeded = () => {
+            if (!req.result.objectStoreNames.contains('cfg')) req.result.createObjectStore('cfg');
+          };
+          req.onerror = () => resolve(null);
+          req.onsuccess = () => {
+            try {
+              const tx = req.result.transaction('cfg', 'readonly');
+              const g = tx.objectStore('cfg').get('creds');
+              g.onsuccess = () => resolve(g.result && g.result.gistId && g.result.token ? g.result : null);
+              g.onerror = () => resolve(null);
+            } catch { resolve(null); }
+          };
+        });
+      }
+    } catch {}
+    if (!found && 'caches' in window) {
+      try {
+        const c = await caches.open(CACHE_CLOUD_NAME);
+        const res = await c.match('/__nos_cfg');
+        if (res) {
+          const p = await res.json();
+          if (p && p.gistId && p.token) found = p;
+        }
+      } catch {}
+    }
+    if (found) {
+      persistCloudCredsAll(found);
+      if (!window.location.hash.includes('gist=')) {
+        try {
+          history.replaceState(null, '', window.location.pathname + window.location.search + `#gist=${encodeURIComponent(found.gistId)}&token=${encodeURIComponent(found.token)}`);
+        } catch {}
+      }
+    }
+    return found;
+  }
+
   function loadCloudCreds() {
     const hash = window.location.hash.replace(/^#/, '');
-    if (hash) {
-      const hp = new URLSearchParams(hash);
+    const search = window.location.search.replace(/^\?/, '');
+    for (const raw of [hash, search]) {
+      if (!raw) continue;
+      const hp = new URLSearchParams(raw);
       const gistId = (hp.get('gist') || '').trim();
       const token = (hp.get('token') || '').trim();
       if (gistId && token) {
         const creds = { gistId, token };
-        try {
-          localStorage.setItem(CLOUD_STORAGE_KEY, JSON.stringify(creds));
-        } catch {}
-        const isStandalone =
-          (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-          window.navigator.standalone === true;
-        if (isStandalone) {
-          history.replaceState(null, '', window.location.pathname + window.location.search);
-        }
+        persistCloudCredsAll(creds);
         return creds;
       }
     }
+    let saved = null;
     try {
-      const saved = JSON.parse(localStorage.getItem(CLOUD_STORAGE_KEY) || 'null');
-      if (saved && saved.gistId && saved.token) return saved;
+      const ls = JSON.parse(localStorage.getItem(CLOUD_STORAGE_KEY) || 'null');
+      if (ls && ls.gistId && ls.token) saved = ls;
     } catch {}
+    if (!saved) saved = readCloudCookie();
+    if (saved) {
+      persistCloudCredsAll(saved);
+      if (!window.location.hash.includes('gist=')) {
+        try {
+          history.replaceState(null, '', window.location.pathname + window.location.search + `#gist=${encodeURIComponent(saved.gistId)}&token=${encodeURIComponent(saved.token)}`);
+        } catch {}
+      }
+      return saved;
+    }
     return null;
   }
 
@@ -681,6 +800,24 @@
     }
   }
 
+  async function pullServerSync(forceRender = false) {
+    if (!forceRender && (inFlightActions > 0 || Date.now() - lastLocalMutationAt < 6000)) {
+      return false;
+    }
+    try {
+      const res = await fetch('/api/sync', { cache: 'no-store' });
+      if (!res.ok) return false;
+      const data = await res.json();
+      if (!data || !data.configured || !data.state) return false;
+      appState = normalizeState(data.state);
+      try { localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(appState)); } catch {}
+      if (!forceRender) renderAll();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async function initSync() {
     if (localToken && window.location.protocol.startsWith('http')) {
       try {
@@ -697,7 +834,32 @@
       } catch {}
     }
 
+    if (!localToken && window.location.protocol.startsWith('http')) {
+      try {
+        const res = await fetch('/api/sync', { cache: 'no-store' });
+        if (res.ok) {
+          const j = await res.json();
+          if (j && j.configured && j.state) {
+            appState = normalizeState(j.state);
+            try { localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(appState)); } catch {}
+            ui.syncMode = 'server';
+            updateSyncBadge();
+            renderAll();
+            setInterval(() => {
+              if (!document.hidden) void pullServerSync(false);
+            }, 12000);
+            return;
+          }
+        }
+      } catch {}
+    }
+
+    if (!ui.cloudCreds) {
+      ui.cloudCreds = await restoreCloudCredsAsync();
+    }
+
     if (ui.cloudCreds) {
+      injectDynamicManifest(ui.cloudCreds);
       const ok = await pullCloudGist(true);
       if (ok) {
         ui.syncMode = 'cloud';
@@ -708,6 +870,18 @@
         }, 12000);
         return;
       }
+      // Keep cloud mode active with local cache and keep retrying automatically
+      try {
+        const saved = JSON.parse(localStorage.getItem(OFFLINE_STORAGE_KEY) || 'null');
+        if (saved) appState = normalizeState(saved);
+      } catch {}
+      ui.syncMode = 'cloud';
+      updateSyncBadge();
+      renderAll();
+      setInterval(() => {
+        if (!document.hidden) void pullCloudGist(false);
+      }, 15000);
+      return;
     }
 
     try {
@@ -752,6 +926,7 @@
       }
       const parsed = JSON.parse(content);
       appState = normalizeState(parsed);
+      try { localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(appState)); } catch {}
       if (!forceRender) renderAll();
       return true;
     } catch {
@@ -793,9 +968,34 @@
 
     lastLocalMutationAt = Date.now();
     applyOpToState(appState, type, opPayload);
+    try { localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(appState)); } catch {}
     renderAll();
 
-    if (ui.syncMode === 'cloud' && ui.cloudCreds) {
+    if (ui.syncMode === 'server') {
+      inFlightActions += 1;
+      try {
+        const gRes = await fetch('/api/sync', { cache: 'no-store' });
+        const gJson = gRes.ok ? await gRes.json() : null;
+        if (gJson && gJson.configured && gJson.state) {
+          const curJson = gJson.state;
+          applyOpToState(curJson, type, opPayload);
+          const pending = Array.isArray(curJson.pendingMobileOps) ? curJson.pendingMobileOps : [];
+          pending.push({ id: uid(), type, payload: opPayload, createdAt: Date.now() });
+          curJson.pendingMobileOps = pending;
+          curJson.updatedAt = Date.now();
+          await fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ state: curJson }),
+          });
+          lastLocalMutationAt = Date.now();
+        }
+      } catch {
+        toast('Salvo localmente; sincronizará ao reconectar.');
+      } finally {
+        inFlightActions = Math.max(0, inFlightActions - 1);
+      }
+    } else if (ui.syncMode === 'cloud' && ui.cloudCreds) {
       inFlightActions += 1;
       try {
         const getRes = await fetch(`https://api.github.com/gists/${ui.cloudCreds.gistId}`, {
@@ -825,10 +1025,6 @@
       } finally {
         inFlightActions = Math.max(0, inFlightActions - 1);
       }
-    } else {
-      try {
-        localStorage.setItem(OFFLINE_STORAGE_KEY, JSON.stringify(appState));
-      } catch {}
     }
     return true;
   }
@@ -840,7 +1036,7 @@
     dot.className = 'sync-dot';
     if (ui.syncMode === 'local') {
       txt.textContent = 'Conectado ao PC';
-    } else if (ui.syncMode === 'cloud') {
+    } else if (ui.syncMode === 'server' || ui.syncMode === 'cloud') {
       dot.classList.add('cloud');
       txt.textContent = 'Sincronizado via Nuvem';
     } else {
@@ -2821,7 +3017,7 @@
   // -------------------- Access Password Gate --------------------
   const AUTH_SESSION_LOCAL_KEY = 'nos_no_azul_unlocked_v1';
   const DEFAULT_ACCESS_SHA256 =
-    '1f2daf985b1361b9d4012f33c3569ea893294e01b8aa64b9e0edd362eaee2abc';
+    '19f800d3830135f6f454f4ae7c955b4550be49a5095d60cd6eb664fd762e93f8';
   let authInitializedSync = false;
 
   // Compact pure-JS SHA-256 fallback when opened offline via non-HTTPS file://

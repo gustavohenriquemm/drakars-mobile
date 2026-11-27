@@ -33,26 +33,65 @@
     <div class="panel" id="taskPanel"></div>
   </div>
 <script>
-const CFG_KEY="drakars_cloud_cfg", DATA_KEY="drakars_cloud_data";
+const CFG_KEY="drakars_cloud_cfg", COOKIE_CFG_KEY="drakars_cloud_cfg_v1", CACHE_CFG_NAME="drakars-persist-cfg-v1", DATA_KEY="drakars_cloud_data";
+function saveCookieCfg(next){
+  try{ document.cookie=COOKIE_CFG_KEY+"="+encodeURIComponent(JSON.stringify(next))+"; max-age=31536000; path=/; SameSite=Lax"; }catch{}
+}
+function readCookieCfg(){
+  try{
+    const m=document.cookie.match(new RegExp("(?:^|; )"+COOKIE_CFG_KEY+"=([^;]*)"));
+    if(m && m[1]){
+      const p=JSON.parse(decodeURIComponent(m[1]));
+      if(p && p.gistId && p.token) return p;
+    }
+  }catch{}
+  return null;
+}
 function readCfg(){
-  if(location.hash && location.hash.length>1){
-    const p=new URLSearchParams(location.hash.slice(1));
-    const gistId=p.get("gist"), token=p.get("token");
+  for(const src of [location.hash.slice(1), location.search.slice(1)]){
+    if(!src) continue;
+    const p=new URLSearchParams(src);
+    const gistId=(p.get("gist")||"").trim(), token=(p.get("token")||"").trim();
     if(gistId && token){
       const c={gistId,token};
-      localStorage.setItem(CFG_KEY,JSON.stringify(c));
-      const isStandalone=(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
-      if(isStandalone) history.replaceState(null,"",location.pathname+location.search);
+      try{ localStorage.setItem(CFG_KEY,JSON.stringify(c)); }catch{}
+      saveCookieCfg(c);
+      try{ if("caches" in window) caches.open(CACHE_CFG_NAME).then(ca=>ca.put("/__drakars_cfg",new Response(JSON.stringify(c)))).catch(()=>{}); }catch{}
       return c;
     }
   }
-  try{return JSON.parse(localStorage.getItem(CFG_KEY)||"null");}catch{return null;}
+  let saved=null;
+  try{
+    const ls=JSON.parse(localStorage.getItem(CFG_KEY)||"null");
+    if(ls && ls.gistId && ls.token) saved=ls;
+  }catch{}
+  if(!saved) saved=readCookieCfg();
+  if(saved){
+    saveCookieCfg(saved);
+    try{ localStorage.setItem(CFG_KEY,JSON.stringify(saved)); }catch{}
+    return saved;
+  }
+  return null;
 }
 let cfg=readCfg(), data=null;
 try{data=JSON.parse(localStorage.getItem(DATA_KEY)||"null");}catch{}
-if(cfg){
-  const link=document.getElementById("glink");
-  if(link) link.setAttribute("href","./#gist="+encodeURIComponent(cfg.gistId)+"&token="+encodeURIComponent(cfg.token));
+function updateLink(){
+  if(cfg){
+    const link=document.getElementById("glink");
+    if(link) link.setAttribute("href","./#gist="+encodeURIComponent(cfg.gistId)+"&token="+encodeURIComponent(cfg.token));
+  }
+}
+updateLink();
+async function restoreAsyncCfg(){
+  if(cfg || !("caches" in window)) return;
+  try{
+    const ca=await caches.open(CACHE_CFG_NAME);
+    const r=await ca.match("/__drakars_cfg");
+    if(r){
+      const p=await r.json();
+      if(p && p.gistId && p.token){ cfg=p; updateLink(); sync(); }
+    }
+  }catch{}
 }
 
 async function getGist(){
@@ -112,8 +151,8 @@ function render(){
     <div style="overflow:hidden;flex:1">${pend.slice(0,4).map(t=>`<div class="row"><button class="chk" onclick="toggleTask('${t.id}')"></button><div class="ttl">${String(t.title).replace(/</g,"&lt;")}</div></div>`).join("")||'<div class="lbl" style="margin-top:14px">Tudo em dia!</div>'}</div>`;
 }
 render();
-sync();
-setInterval(sync, 15000);
+if(cfg) sync(); else restoreAsyncCfg();
+setInterval(()=>{ if(cfg) sync(); }, 15000);
 </script>
 </body>
 </html>

@@ -333,8 +333,11 @@
   'use strict';
 
   const CLOUD_STORAGE_KEY = 'drakars_finance_cloud_v1';
+  const COOKIE_CFG_KEY = 'nos_no_azul_cloud_v1';
+  const IDB_NAME = 'nos_azul_persist_db';
+  const CACHE_CFG_NAME = 'nos-azul-persist-cfg-v1';
   const AUTH_LOCAL_KEY = 'nos_no_azul_unlocked_v1';
-  const DEFAULT_ACCESS_SHA256 = '1f2daf985b1361b9d4012f33c3569ea893294e01b8aa64b9e0edd362eaee2abc';
+  const DEFAULT_ACCESS_SHA256 = '19f800d3830135f6f454f4ae7c955b4550be49a5095d60cd6eb664fd762e93f8';
 
   const BANK_COLORS = {
     nubank: '#820AD1', itau: '#EC7000', bradesco: '#CC092F', santander: '#EC0000',
@@ -402,29 +405,119 @@
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
+  function saveCookieCfg(next) {
+    try {
+      document.cookie = `${COOKIE_CFG_KEY}=${encodeURIComponent(JSON.stringify(next))}; max-age=31536000; path=/; SameSite=Lax`;
+    } catch {}
+  }
+
+  function readCookieCfg() {
+    try {
+      const m = document.cookie.match(new RegExp('(?:^|; )' + COOKIE_CFG_KEY + '=([^;]*)'));
+      if (m && m[1]) {
+        const parsed = JSON.parse(decodeURIComponent(m[1]));
+        if (parsed && parsed.gistId && parsed.token) return parsed;
+      }
+    } catch {}
+    return null;
+  }
+
+  function persistAsyncStores(next) {
+    saveCookieCfg(next);
+    try { localStorage.setItem(CLOUD_STORAGE_KEY, JSON.stringify(next)); } catch {}
+    try {
+      if (window.indexedDB) {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('cfg')) db.createObjectStore('cfg');
+        };
+        req.onsuccess = () => {
+          try {
+            const tx = req.result.transaction('cfg', 'readwrite');
+            tx.objectStore('cfg').put(next, 'creds');
+          } catch {}
+        };
+      }
+    } catch {}
+    try {
+      if ('caches' in window) {
+        caches.open(CACHE_CFG_NAME).then((c) => c.put('/__nos_cfg', new Response(JSON.stringify(next)))).catch(() => undefined);
+      }
+    } catch {}
+  }
+
+  async function restoreAsyncCreds() {
+    let found = null;
+    try {
+      if (window.indexedDB) {
+        found = await new Promise((resolve) => {
+          const req = indexedDB.open(IDB_NAME, 1);
+          req.onupgradeneeded = () => {
+            if (!req.result.objectStoreNames.contains('cfg')) req.result.createObjectStore('cfg');
+          };
+          req.onerror = () => resolve(null);
+          req.onsuccess = () => {
+            try {
+              const tx = req.result.transaction('cfg', 'readonly');
+              const g = tx.objectStore('cfg').get('creds');
+              g.onsuccess = () => resolve(g.result && g.result.gistId && g.result.token ? g.result : null);
+              g.onerror = () => resolve(null);
+            } catch { resolve(null); }
+          };
+        });
+      }
+    } catch {}
+    if (!found && 'caches' in window) {
+      try {
+        const c = await caches.open(CACHE_CFG_NAME);
+        const res = await c.match('/__nos_cfg');
+        if (res) {
+          const p = await res.json();
+          if (p && p.gistId && p.token) found = p;
+        }
+      } catch {}
+    }
+    if (found) {
+      persistAsyncStores(found);
+      if (!window.location.hash.includes('gist=')) {
+        try {
+          history.replaceState(null, '', window.location.pathname + window.location.search + `#gist=${encodeURIComponent(found.gistId)}&token=${encodeURIComponent(found.token)}`);
+        } catch {}
+      }
+    }
+    return found;
+  }
+
   function readCreds() {
-    if (window.location.hash && window.location.hash.length > 1) {
-      const p = new URLSearchParams(window.location.hash.slice(1));
+    const rawHash = window.location.hash && window.location.hash.length > 1 ? window.location.hash.slice(1) : '';
+    const rawSearch = window.location.search && window.location.search.length > 1 ? window.location.search.slice(1) : '';
+    for (const src of [rawHash, rawSearch]) {
+      if (!src) continue;
+      const p = new URLSearchParams(src);
       const gistId = (p.get('gist') || '').trim();
       const token = (p.get('token') || '').trim();
       if (gistId && token) {
         const next = { gistId, token };
-        try {
-          localStorage.setItem(CLOUD_STORAGE_KEY, JSON.stringify(next));
-        } catch {}
-        const isStandalone =
-          (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-          window.navigator.standalone === true;
-        if (isStandalone) {
-          history.replaceState(null, '', window.location.pathname + window.location.search);
-        }
+        persistAsyncStores(next);
         return next;
       }
     }
+    let saved = null;
     try {
-      const saved = JSON.parse(localStorage.getItem(CLOUD_STORAGE_KEY) || 'null');
-      if (saved && saved.gistId && saved.token) return saved;
+      const ls = JSON.parse(localStorage.getItem(CLOUD_STORAGE_KEY) || 'null');
+      if (ls && ls.gistId && ls.token) saved = ls;
     } catch {}
+    if (!saved) saved = readCookieCfg();
+    if (saved) {
+      persistAsyncStores(saved);
+      if (!window.location.hash.includes('gist=')) {
+        try {
+          history.replaceState(null, '', window.location.pathname + window.location.search + `#gist=${encodeURIComponent(saved.gistId)}&token=${encodeURIComponent(saved.token)}`);
+        } catch {}
+      }
+      return saved;
+    }
     return null;
   }
 
@@ -797,9 +890,16 @@
     return '';
   }
 
-  function enterUnlocked() {
+  async function enterUnlocked() {
     unlocked = true;
     document.getElementById('authGate')?.classList.add('hidden');
+    if (!creds) {
+      const restored = await restoreAsyncCreds();
+      if (restored) {
+        creds = restored;
+        updatePanelHref();
+      }
+    }
     render();
     pullGist();
   }

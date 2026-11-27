@@ -6,9 +6,9 @@
 <meta name="theme-color" content="#0E1013" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Drakars" />
 <link rel="icon" type="image/svg+xml" href="./icon.svg" />
 <link rel="apple-touch-icon" href="./icon.svg" />
-<link rel="manifest" href="./manifest.json" />
 <title>Drakars</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -66,24 +66,134 @@
   <div id="content"></div>
   <div class="nav" id="nav"></div>
 <script>
-const CFG_KEY="drakars_cloud_cfg", DATA_KEY="drakars_cloud_data", MOD_KEY="drakars_mob_mod";
+const CFG_KEY="drakars_cloud_cfg", COOKIE_CFG_KEY="drakars_cloud_cfg_v1", IDB_NAME="drakars_persist_db", CACHE_CFG_NAME="drakars-persist-cfg-v1";
+const DATA_KEY="drakars_cloud_data", MOD_KEY="drakars_mob_mod";
 const BANK_COLORS={nubank:"#820AD1",itau:"#EC7000",bradesco:"#CC092F",santander:"#EC0000",bb:"#FFCC00",caixa:"#005CA9",inter:"#FF7A00",c6:"#27272A",btg:"#001E62",xp:"#FFD000",mercadopago:"#009EE3",picpay:"#21C25E",pagbank:"#00A868",sicredi:"#3FA110",sicoob:"#003641",wise:"#9FE870",nomad:"#C9A227"};
 let mod=localStorage.getItem(MOD_KEY)||"work", subTab="", cfg=null, data=null;
 
+function saveCookieCfg(next){
+  try{ document.cookie=COOKIE_CFG_KEY+"="+encodeURIComponent(JSON.stringify(next))+"; max-age=31536000; path=/; SameSite=Lax"; }catch{}
+}
+function readCookieCfg(){
+  try{
+    const m=document.cookie.match(new RegExp("(?:^|; )"+COOKIE_CFG_KEY+"=([^;]*)"));
+    if(m && m[1]){
+      const p=JSON.parse(decodeURIComponent(m[1]));
+      if(p && p.gistId && p.token) return p;
+    }
+  }catch{}
+  return null;
+}
+function injectDynamicManifest(next){
+  try{
+    const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent||"");
+    if(isIos || !location.protocol.startsWith("http")) return;
+    const hash=next?"#gist="+encodeURIComponent(next.gistId)+"&token="+encodeURIComponent(next.token):"";
+    const startUrl=location.origin+location.pathname+hash;
+    const dir=location.origin+location.pathname.replace(/[^/]*$/,"");
+    const m={
+      name:"Drakars",
+      short_name:"Drakars",
+      start_url:startUrl,
+      scope:"./",
+      display:"standalone",
+      background_color:"#0E1013",
+      theme_color:"#0E1013",
+      icons:[{src:dir+"icon.svg",sizes:"any",type:"image/svg+xml",purpose:"any maskable"}]
+    };
+    let link=document.querySelector('link[rel="manifest"]');
+    if(!link){ link=document.createElement("link"); link.setAttribute("rel","manifest"); document.head.appendChild(link); }
+    link.setAttribute("href","data:application/manifest+json;charset=utf-8,"+encodeURIComponent(JSON.stringify(m)));
+  }catch{}
+}
+function persistAllStores(next){
+  if(!next || !next.gistId || !next.token) return;
+  try{ localStorage.setItem(CFG_KEY, JSON.stringify(next)); }catch{}
+  saveCookieCfg(next);
+  injectDynamicManifest(next);
+  try{
+    if(window.indexedDB){
+      const req=indexedDB.open(IDB_NAME,1);
+      req.onupgradeneeded=()=>{ if(!req.result.objectStoreNames.contains("cfg")) req.result.createObjectStore("cfg"); };
+      req.onsuccess=()=>{ try{ req.result.transaction("cfg","readwrite").objectStore("cfg").put(next,"creds"); }catch{} };
+    }
+  }catch{}
+  try{
+    if("caches" in window){
+      caches.open(CACHE_CFG_NAME).then(c=>c.put("/__drakars_cfg", new Response(JSON.stringify(next)))).catch(()=>{});
+    }
+  }catch{}
+}
+function ensureHashHasCreds(next){
+  if(!next || !next.gistId || !next.token) return;
+  if(!location.hash.includes("gist=")){
+    try{
+      history.replaceState(null,"",location.pathname+location.search+"#gist="+encodeURIComponent(next.gistId)+"&token="+encodeURIComponent(next.token));
+    }catch{}
+  }
+}
 function readConfig(){
-  if(location.hash && location.hash.length>1){
-    const p=new URLSearchParams(location.hash.slice(1));
-    const gistId=p.get("gist"), token=p.get("token");
+  const rawHash=location.hash && location.hash.length>1 ? location.hash.slice(1) : "";
+  const rawSearch=location.search && location.search.length>1 ? location.search.slice(1) : "";
+  for(const src of [rawHash, rawSearch]){
+    if(!src) continue;
+    const p=new URLSearchParams(src);
+    const gistId=(p.get("gist")||"").trim(), token=(p.get("token")||"").trim();
     if(gistId && token){
       const next={gistId,token};
-      localStorage.setItem(CFG_KEY, JSON.stringify(next));
-      const isStandalone=(window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true;
-      if(isStandalone) history.replaceState(null,"",location.pathname+location.search);
+      persistAllStores(next);
       return next;
     }
   }
-  try{ return JSON.parse(localStorage.getItem(CFG_KEY)||"null"); }catch{ return null; }
+  let saved=null;
+  try{
+    const ls=JSON.parse(localStorage.getItem(CFG_KEY)||"null");
+    if(ls && ls.gistId && ls.token) saved=ls;
+  }catch{}
+  if(!saved) saved=readCookieCfg();
+  if(saved){
+    persistAllStores(saved);
+    ensureHashHasCreds(saved);
+    return saved;
+  }
+  return null;
 }
+async function restoreAsyncConfig(){
+  let found=null;
+  try{
+    if(window.indexedDB){
+      found=await new Promise(resolve=>{
+        const req=indexedDB.open(IDB_NAME,1);
+        req.onupgradeneeded=()=>{ if(!req.result.objectStoreNames.contains("cfg")) req.result.createObjectStore("cfg"); };
+        req.onerror=()=>resolve(null);
+        req.onsuccess=()=>{
+          try{
+            const g=req.result.transaction("cfg","readonly").objectStore("cfg").get("creds");
+            g.onsuccess=()=>resolve(g.result && g.result.gistId && g.result.token ? g.result : null);
+            g.onerror=()=>resolve(null);
+          }catch{ resolve(null); }
+        };
+      });
+    }
+  }catch{}
+  if(!found && "caches" in window){
+    try{
+      const c=await caches.open(CACHE_CFG_NAME);
+      const r=await c.match("/__drakars_cfg");
+      if(r){
+        const p=await r.json();
+        if(p && p.gistId && p.token) found=p;
+      }
+    }catch{}
+  }
+  if(found){
+    cfg=found;
+    persistAllStores(found);
+    ensureHashHasCreds(found);
+    await sync();
+  }
+}
+
 cfg=readConfig();
 try{ const c=localStorage.getItem(DATA_KEY); if(c) data=JSON.parse(c); }catch{}
 if("serviceWorker" in navigator){ navigator.serviceWorker.register("./sw.js").catch(()=>{}); }
@@ -116,9 +226,9 @@ async function sync(){
   if(!cfg){ render(); return; }
   try{
     const remote=await fetchGist();
-    if(remote){ data=remote; localStorage.setItem(DATA_KEY, JSON.stringify(data)); }
+    if(remote){ data=remote; try{ localStorage.setItem(DATA_KEY, JSON.stringify(data)); }catch{} }
     render();
-  }catch{ render("Modo offline (usando cache local)."); }
+  }catch{ render("Conexão mantida • tentando reconectar automaticamente..."); }
 }
 async function pushOp(type, payload, mutateLocal){
   if(!cfg || !data) return;
@@ -127,9 +237,9 @@ async function pushOp(type, payload, mutateLocal){
   fresh.pendingMobileOps=Array.isArray(fresh.pendingMobileOps)?fresh.pendingMobileOps:[];
   fresh.pendingMobileOps.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,7),type,payload,createdAt:Date.now()});
   fresh.updatedAt=Date.now();
-  data=fresh; localStorage.setItem(DATA_KEY, JSON.stringify(data));
+  data=fresh; try{ localStorage.setItem(DATA_KEY, JSON.stringify(data)); }catch{}
   render();
-  await patchGist(fresh);
+  try{ await patchGist(fresh); }catch{ render("Alteração salva localmente; sincronizando ao retomar sinal."); }
 }
 
 async function addTask(e, ws){
@@ -193,7 +303,12 @@ async function sendCmd(e){
 function saveManualCfg(e){
   e.preventDefault();
   const g=document.getElementById("cfgGist").value.trim(), t=document.getElementById("cfgTok").value.trim();
-  if(g && t){ cfg={gistId:g,token:t}; localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); sync(); }
+  if(g && t){
+    cfg={gistId:g,token:t};
+    persistAllStores(cfg);
+    ensureHashHasCreds(cfg);
+    sync();
+  }
 }
 function fmtBrl(n){return Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
 
@@ -216,10 +331,10 @@ function render(warn){
     ban.innerHTML="";
     el.innerHTML=`
       <div class="card">
-        <div class="ttl" style="margin-bottom:6px">Conectar ao seu Drakars</div>
-        <div class="sub" style="margin-bottom:10px">Nenhuma conta ou senha precisa ser criada aqui — basta escanear novamente o <b>QR Code na aba Celular do Drakars no PC</b>.<br><br>Dica no iPhone: depois de escanear, toque em <b>Compartilhar → Adicionar à Tela de Início</b> na mesma aba para salvar o pareamento automático.</div>
+        <div class="ttl" style="margin-bottom:6px">Parear Drakars Mobile (1x só)</div>
+        <div class="sub" style="margin-bottom:10px">Se você tinha um ícone antigo na tela inicial, <b>apague-o</b>, escaneie o <b>QR Code novo na aba Celular do Drakars no PC</b> e adicione novamente à Tela de Início para gravar a conexão permanente (sem nunca mais pedir conexão manual).</div>
         <details>
-          <summary class="sub" style="cursor:pointer;color:#9AF549;font-weight:700">Conexão manual (avançado)</summary>
+          <summary class="sub" style="cursor:pointer;color:#9AF549;font-weight:700">Conexão manual (opcional)</summary>
           <form onsubmit="saveManualCfg(event)" style="margin-top:10px">
             <input id="cfgGist" placeholder="Gist ID" style="margin-bottom:8px;width:100%" />
             <input id="cfgTok" type="password" placeholder="Token GitHub (gist)" style="margin-bottom:8px;width:100%" />
@@ -292,8 +407,8 @@ function render(warn){
 }
 function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 render();
-sync();
-setInterval(()=>{ if(!document.hidden) sync(); }, 10000);
+if(cfg) sync(); else restoreAsyncConfig();
+setInterval(()=>{ if(!document.hidden && cfg) sync(); }, 15000);
 </script>
 </body>
 </html>

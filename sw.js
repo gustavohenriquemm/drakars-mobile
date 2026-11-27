@@ -1,4 +1,5 @@
-const CACHE_NAME = 'drakars-pwa-v6';
+const CACHE_NAME = 'drakars-pwa-v7';
+const PRESERVED_CACHES = new Set([CACHE_NAME, 'drakars-persist-cfg-v1', 'nos-azul-persist-cfg-v1']);
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +9,7 @@ const ASSETS = [
   './financeiro.css',
   './financeiro.js',
   './manifest.json',
+  './manifest-azul.json',
   './icon.svg',
 ];
 
@@ -23,7 +25,7 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+        Promise.all(keys.filter((k) => !PRESERVED_CACHES.has(k)).map((k) => caches.delete(k)))
       )
       .then(() => self.clients.claim())
   );
@@ -31,7 +33,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  if (url.hostname === 'api.github.com') {
+  if (url.hostname === 'api.github.com' || url.pathname.startsWith('/api/')) {
     return;
   }
   event.respondWith(
