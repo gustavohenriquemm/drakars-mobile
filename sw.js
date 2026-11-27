@@ -1,4 +1,4 @@
-const CACHE_NAME = 'drakars-pwa-v4';
+const CACHE_NAME = 'drakars-pwa-v5';
 const ASSETS = [
   './',
   './index.html',

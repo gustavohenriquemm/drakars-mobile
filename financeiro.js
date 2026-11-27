@@ -52,6 +52,52 @@
     'Outros',
   ];
 
+  const ICONS = {
+    home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/><path d="M9.5 21v-6h5v6"/></svg>',
+    arrows: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>',
+    card: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="3"/><line x1="2" y1="10" x2="22" y2="10"/></svg>',
+    target: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>',
+    clipboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>',
+    calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="3"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="3" y1="9.5" x2="21" y2="9.5"/></svg>',
+    chart: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+    users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v2"/></svg>',
+    bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+    camera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    pie: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>',
+    trending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+    receipt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2Z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>',
+    calculator: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2.5"/><line x1="8" y1="6" x2="16" y2="6"/><path d="M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01M8 19h4M16 19h.01"/></svg>',
+    message: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+    cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>',
+    banknote: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>',
+    sliders: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
+    plane: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>',
+    shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  };
+
+  function ico(name, sizePx = 16) {
+    const svg = ICONS[name] || ICONS.target;
+    return `<span class="svg-ico" style="width:${sizePx}px;height:${sizePx}px" aria-hidden="true">${svg}</span>`;
+  }
+
+  function icoBadge(name) {
+    const svg = ICONS[name] || ICONS.target;
+    return `<span class="icon-badge" aria-hidden="true">${svg}</span>`;
+  }
+
+  function goalIconKey(g) {
+    const p = String(g.imagePreset || '').toLowerCase();
+    const t = String(g.title || '').toLowerCase();
+    if (p === 'house' || p === 'renovation' || /casa|apto|apartamento|im[oó]vel|reforma/.test(t)) return 'home';
+    if (p === 'emergency' || p === 'invest' || /reserva|emerg|segur|poupan/.test(t)) return 'shield';
+    if (p === 'travel' || p === 'europe' || /viagem|chile|praia|ferias|f[eé]rias/.test(t)) return 'plane';
+    return 'target';
+  }
+
   const DONUT_COLORS = ['#B6492D', '#E8834A', '#F3B452', '#2E7D6B', '#547AA5', '#9D6B8E', '#8B7166'];
 
   const qs = new URLSearchParams(window.location.search);
@@ -109,7 +155,7 @@
           title: 'Viagem dos Sonhos',
           targetAmount: 12000,
           currentAmount: 4200,
-          icon: '✈️',
+          icon: 'plane',
           imagePreset: 'travel',
           owner: 'casal',
         },
@@ -118,7 +164,7 @@
           title: 'Reserva de Emergência',
           targetAmount: 30000,
           currentAmount: 14500,
-          icon: '🛡️',
+          icon: 'shield',
           imagePreset: 'emergency',
           owner: 'casal',
         },
@@ -520,7 +566,7 @@
         title: p.title,
         targetAmount: Math.max(1, Number(p.targetAmount) || 1),
         currentAmount: Math.max(0, Number(p.currentAmount) || 0),
-        icon: p.icon || '🎯',
+        icon: p.icon || 'target',
         imagePreset: p.imagePreset || 'travel',
         imageUrl: p.imageUrl || undefined,
         targetDate: p.targetDate || undefined,
@@ -1175,7 +1221,7 @@
           role: 'bot',
           html: met.unpaidBills.length
             ? `Faltam <strong>${met.unpaidBills.length} contas</strong> neste mês (${fmtBrl(met.unpaidBillsTotal)}):<br/>${list}`
-            : 'Todas as contas fixas desse mês já estão pagas! 🎉',
+            : 'Todas as contas fixas desse mês já estão pagas.',
         });
       } else {
         ui.chat.push({
@@ -1218,7 +1264,12 @@
                     <img src="${esc(resolveGoalPhoto(g))}" alt="${esc(g.title)}" />
                   </div>
                   <div class="goal-info">
-                    <div class="goal-name">${esc(g.icon || '🎯')} ${esc(g.title)}</div>
+                    <div class="goal-name" style="display:flex;align-items:center;gap:6px">${ico(
+                      goalIconKey(g),
+                      14
+                    )} <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(
+                      g.title
+                    )}</span></div>
                     <div class="goal-bar-track"><div class="goal-bar-fill" style="width:${pct}%"></div></div>
                     <div class="goal-sub">
                       <span class="num">${esc(fmtBrl(g.currentAmount))} de ${esc(fmtBrl(g.targetAmount))}</span>
@@ -1278,7 +1329,7 @@
               <div class="bill-row">
                 <button type="button" class="chk-box ${done ? 'done' : ''}" data-action="toggle-bill" data-id="${esc(
               b.id
-            )}">${done ? '✓' : ''}</button>
+            )}">${done ? ico('check', 12) : ''}</button>
                 <div style="flex:1;min-width:0">
                   <div style="font-size:13px;font-weight:700;${
                     done ? 'text-decoration:line-through;opacity:.55' : ''
@@ -1330,19 +1381,19 @@
         <div class="hero-wallets-grid">
           <div class="wallet-card wallet-joint anim-card delay-1">
             <div>
-              <div class="wallet-label"><span>👫</span><span>Saldo conjunto</span></div>
+              <div class="wallet-label">${ico('users', 15)}<span>Saldo conjunto</span></div>
               <div class="wallet-amount num" data-count-brl="${met.heroJoint}">${esc(fmtBrl(met.heroJoint))}</div>
               <span class="wallet-badge ${met.monthFree < 0 ? 'neg' : ''}">${esc(pctLabel(met.monthFree))}</span>
             </div>
             <div class="avatar-editable" data-action="upload-person-photo" data-person="casal" title="Trocar foto do casal">
               <img src="${esc(resolvePersonAvatar('casal'))}" alt="Casal" />
-              <span class="avatar-overlay">📷 Trocar</span>
+              <span class="avatar-overlay">${ico('camera', 14)} Trocar</span>
             </div>
           </div>
 
           <div class="wallet-card wallet-her anim-card delay-2">
             <div>
-              <div class="wallet-label"><span>👩</span><span>Carteira pessoal • ${esc(herName)}</span></div>
+              <div class="wallet-label">${ico('user', 15)}<span>Carteira pessoal • ${esc(herName)}</span></div>
               <div class="wallet-amount num" data-count-brl="${met.heroHer}">${esc(fmtBrl(met.heroHer))}</div>
               <span class="wallet-badge ${met.herMonthNet < 0 ? 'neg' : ''}">${esc(
       met.herMonthNet >= 0 ? `+ ${fmtBrl(met.herMonthNet)} no mês` : `${fmtBrl(met.herMonthNet)} no mês`
@@ -1350,13 +1401,13 @@
             </div>
             <div class="avatar-editable" data-action="upload-person-photo" data-person="esposa" title="Trocar foto de ${esc(herName)}">
               <img src="${esc(resolvePersonAvatar('esposa'))}" alt="${esc(herName)}" />
-              <span class="avatar-overlay">📷 Trocar</span>
+              <span class="avatar-overlay">${ico('camera', 14)} Trocar</span>
             </div>
           </div>
 
           <div class="wallet-card wallet-his anim-card delay-3">
             <div>
-              <div class="wallet-label"><span>👤</span><span>Carteira pessoal • ${esc(hisName)}</span></div>
+              <div class="wallet-label">${ico('user', 15)}<span>Carteira pessoal • ${esc(hisName)}</span></div>
               <div class="wallet-amount num" data-count-brl="${met.heroHis}">${esc(fmtBrl(met.heroHis))}</div>
               <span class="wallet-badge ${met.hisMonthNet < 0 ? 'neg' : ''}">${esc(
       met.hisMonthNet >= 0 ? `+ ${fmtBrl(met.hisMonthNet)} no mês` : `${fmtBrl(met.hisMonthNet)} no mês`
@@ -1364,7 +1415,7 @@
             </div>
             <div class="avatar-editable" data-action="upload-person-photo" data-person="eu" title="Trocar foto de ${esc(hisName)}">
               <img src="${esc(resolvePersonAvatar('eu'))}" alt="${esc(hisName)}" />
-              <span class="avatar-overlay">📷 Trocar</span>
+              <span class="avatar-overlay">${ico('camera', 14)} Trocar</span>
             </div>
           </div>
         </div>
@@ -1373,7 +1424,7 @@
         <div class="middle-grid">
           <div class="card anim-card delay-4">
             <div class="card-head">
-              <div class="card-title"><span>🎯</span><span>Metas compartilhadas</span></div>
+              <div class="card-title">${icoBadge('target')}<span>Metas compartilhadas</span></div>
               <button type="button" class="link-btn" data-nav="goals">Ver todas →</button>
             </div>
             <div style="display:flex;flex-direction:column;gap:8px">${goalsHtml}</div>
@@ -1381,7 +1432,7 @@
 
           <div class="card anim-card delay-5">
             <div class="card-head">
-              <div class="card-title"><span>🏡</span><span>Despesas da casa</span></div>
+              <div class="card-title">${icoBadge('home')}<span>Despesas da casa</span></div>
               <strong class="num" style="font-size:17px">${esc(fmtBrl(met.totalExpense))}</strong>
             </div>
             <div class="kv-list">${breakdownHtml}</div>
@@ -1389,7 +1440,7 @@
 
           <div class="card anim-card delay-6">
             <div class="card-head">
-              <div class="card-title"><span>⇄</span><span>Quem pagou o quê</span></div>
+              <div class="card-title">${icoBadge('arrows')}<span>Quem pagou o quê</span></div>
               <button type="button" class="link-btn" data-nav="transactions">Histórico →</button>
             </div>
             <div style="display:flex;flex-direction:column;gap:6px">${feedHtml}</div>
@@ -1400,7 +1451,7 @@
         <div class="bottom-grid">
           <div class="card anim-card delay-5">
             <div class="card-head">
-              <div class="card-title"><span>🧾</span><span>Contas do mês</span></div>
+              <div class="card-title">${icoBadge('receipt')}<span>Contas do mês</span></div>
               <span class="pill-count ${met.unpaidBills.length === 0 ? 'ok' : ''}">${
       met.unpaidBills.length ? `${met.unpaidBills.length} pendentes` : 'Tudo pago'
     }</span>
@@ -1410,14 +1461,14 @@
 
           <div class="card anim-card delay-6">
             <div class="card-head">
-              <div class="card-title"><span>🍩</span><span>Gastos por categoria</span></div>
+              <div class="card-title">${icoBadge('pie')}<span>Gastos por categoria</span></div>
             </div>
             ${renderDonutSvg(met.catEntries, met.totalExpense)}
           </div>
 
           <div class="card anim-card delay-7">
             <div class="card-head">
-              <div class="card-title"><span>📈</span><span>Evolução dos gastos</span></div>
+              <div class="card-title">${icoBadge('trending')}<span>Evolução dos gastos</span></div>
               <span style="font-size:11.5px;color:var(--muted);font-weight:700">6 meses</span>
             </div>
             ${renderSplineSvg(series)}
@@ -1425,7 +1476,7 @@
 
           <div class="card anim-card delay-8">
             <div class="card-head">
-              <div class="card-title"><span>📅</span><span>Calendário financeiro</span></div>
+              <div class="card-title">${icoBadge('calendar')}<span>Calendário financeiro</span></div>
               <button type="button" class="link-btn" data-nav="calendar">Abrir →</button>
             </div>
             <div style="display:flex;flex-direction:column;gap:5px">${calMiniHtml}</div>
@@ -1469,14 +1520,14 @@
               t.type === 'income' ? 'var(--green)' : t.type === 'transfer' ? 'var(--amber)' : 'var(--red)'
             }">${t.type === 'income' ? '+' : '-'}${esc(fmtBrl(t.amount))}</td>
             <td>
-              <button type="button" class="pill-count ${t.paid ? 'ok' : ''}" data-action="toggle-tx-paid" data-id="${esc(
+              <button type="button" class="pill-count ${t.paid ? 'ok' : ''}" style="display:inline-flex;align-items:center;gap:4px" data-action="toggle-tx-paid" data-id="${esc(
               t.id
-            )}">${t.paid ? '✓ Pago' : 'Pendente'}</button>
+            )}">${t.paid ? `${ico('check', 11)} Pago` : 'Pendente'}</button>
             </td>
             <td style="text-align:right">
               <button type="button" class="btn-secondary" style="padding:5px 9px;font-size:11px" data-action="delete-tx" data-id="${esc(
                 t.id
-              )}">🗑</button>
+              )}">${ico('trash', 14)}</button>
             </td>
           </tr>
         `
@@ -1571,9 +1622,9 @@
                     <button type="button" style="padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.22);color:#FFF;font-weight:700" data-action="pay-card" data-id="${esc(
                       c.id
                     )}">Pagar fatura</button>
-                    <button type="button" style="color:rgba(255,255,255,.7)" data-action="delete-card" data-id="${esc(
+                    <button type="button" style="color:rgba(255,255,255,.75)" data-action="delete-card" data-id="${esc(
                       c.id
-                    )}">🗑</button>
+                    )}">${ico('trash', 14)}</button>
                   </div>
                 </div>
               </div>
@@ -1607,13 +1658,16 @@
               <div class="card goal-big-card">
                 <div class="goal-hero-img">
                   <img src="${esc(resolveGoalPhoto(g))}" alt="${esc(g.title)}" />
-                  <button type="button" class="goal-photo-chip" data-action="change-goal-photo" data-id="${esc(
+                  <button type="button" class="goal-photo-chip" style="display:inline-flex;align-items:center;gap:5px" data-action="change-goal-photo" data-id="${esc(
                     g.id
-                  )}">📷 Trocar foto</button>
+                  )}">${ico('camera', 13)} Trocar foto</button>
                 </div>
                 <div style="padding:16px 18px;display:flex;flex-direction:column;gap:10px">
                   <div style="display:flex;justify-content:space-between;align-items:center">
-                    <strong style="font-size:16px">${esc(g.icon || '🎯')} ${esc(g.title)}</strong>
+                    <strong style="font-size:16px;display:inline-flex;align-items:center;gap:7px">${ico(
+                      goalIconKey(g),
+                      16
+                    )} <span>${esc(g.title)}</span></strong>
                     <span class="pill-count ok num">${pct}%</span>
                   </div>
                   <div class="goal-bar-track" style="height:10px"><div class="goal-bar-fill" style="width:${pct}%"></div></div>
@@ -1633,7 +1687,7 @@
                     )}">Outro</button>
                     <button type="button" class="btn-secondary" style="padding:8px 10px" data-action="delete-goal" data-id="${esc(
                       g.id
-                    )}">🗑</button>
+                    )}">${ico('trash', 14)}</button>
                   </div>
                 </div>
               </div>
@@ -1666,12 +1720,12 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <strong class="num" style="color:var(--green)">+${esc(fmtBrl(f.amount))}</strong>
-                  <button type="button" class="pill-count ${credited ? 'ok' : ''}" data-action="credit-salary" data-id="${esc(
+                  <button type="button" class="pill-count ${credited ? 'ok' : ''}" style="display:inline-flex;align-items:center;gap:4px" data-action="credit-salary" data-id="${esc(
               f.id
-            )}">${credited ? '✓ Recebido' : 'Receber'}</button>
+            )}">${credited ? `${ico('check', 11)} Recebido` : 'Receber'}</button>
                   <button type="button" class="btn-secondary" style="padding:4px 8px" data-action="delete-salary" data-id="${esc(
                     f.id
-                  )}">🗑</button>
+                  )}">${ico('trash', 13)}</button>
                 </div>
               </div>
             `;
@@ -1691,12 +1745,12 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:8px">
                   <strong class="num">${esc(fmtBrl(b.amount))}</strong>
-                  <button type="button" class="pill-count ${paid ? 'ok' : ''}" data-action="toggle-bill" data-id="${esc(
+                  <button type="button" class="pill-count ${paid ? 'ok' : ''}" style="display:inline-flex;align-items:center;gap:4px" data-action="toggle-bill" data-id="${esc(
               b.id
-            )}">${paid ? '✓ Pago' : 'Pagar'}</button>
+            )}">${paid ? `${ico('check', 11)} Pago` : 'Pagar'}</button>
                   <button type="button" class="btn-secondary" style="padding:4px 8px" data-action="delete-bill" data-id="${esc(
                     b.id
-                  )}">🗑</button>
+                  )}">${ico('trash', 13)}</button>
                 </div>
               </div>
             `;
@@ -1731,7 +1785,7 @@
         <div class="grid-2">
           <div class="card">
             <div class="card-head">
-              <div class="card-title"><span>💵</span><span>Salário Fixo Mensal</span></div>
+              <div class="card-title">${icoBadge('banknote')}<span>Salário Fixo Mensal</span></div>
               <button type="button" class="btn-primary" style="padding:7px 12px;font-size:12px" data-action="open-salary-modal">＋ Adicionar Salário</button>
             </div>
             ${salariesHtml}
@@ -1739,7 +1793,7 @@
 
           <div class="card">
             <div class="card-head">
-              <div class="card-title"><span>🏠</span><span>Contas Fixas da Casa</span></div>
+              <div class="card-title">${icoBadge('home')}<span>Contas Fixas da Casa</span></div>
               <button type="button" class="btn-primary" style="padding:7px 12px;font-size:12px" data-action="open-bill-modal">＋ Adicionar Conta</button>
             </div>
             ${billsHtml}
@@ -1748,7 +1802,7 @@
 
         <div class="card">
           <div class="card-head">
-            <div class="card-title"><span>🎚️</span><span>Orçamentos por Categoria (${esc(formatMonthLabel(ui.monthKey))})</span></div>
+            <div class="card-title">${icoBadge('sliders')}<span>Orçamentos por Categoria (${esc(formatMonthLabel(ui.monthKey))})</span></div>
             <button type="button" class="btn-secondary" data-action="open-budget-modal">＋ Definir Limite</button>
           </div>
           ${budgetsHtml}
@@ -1793,7 +1847,7 @@
     return `
       <div class="view-enter card" style="display:flex;flex-direction:column;gap:14px">
         <div class="card-head" style="margin:0">
-          <div class="card-title"><span>📅</span><span>Calendário Financeiro • ${esc(formatMonthLabel(ui.monthKey))}</span></div>
+          <div class="card-title">${icoBadge('calendar')}<span>Calendário Financeiro • ${esc(formatMonthLabel(ui.monthKey))}</span></div>
           <button type="button" class="btn-primary" data-action="open-event-modal">＋ Novo Evento</button>
         </div>
         <div class="cal-grid-7">${headers}${cells}</div>
@@ -1836,11 +1890,11 @@
     return `
       <div class="view-enter grid-2">
         <div class="card">
-          <div class="card-head"><div class="card-title"><span>📊</span><span>Entradas vs Saídas (6 meses)</span></div></div>
+          <div class="card-head"><div class="card-title">${icoBadge('chart')}<span>Entradas vs Saídas (6 meses)</span></div></div>
           ${barsHtml}
         </div>
         <div class="card">
-          <div class="card-head"><div class="card-title"><span>👫</span><span>Gastos por Pessoa no Mês</span></div></div>
+          <div class="card-head"><div class="card-title">${icoBadge('users')}<span>Gastos por Pessoa no Mês</span></div></div>
           <div style="display:flex;flex-direction:column;gap:14px">
             <div>
               <div style="display:flex;justify-content:space-between;font-size:13px"><strong>${esc(hisName)}</strong><strong class="num">${esc(fmtBrl(byOwner.eu))}</strong></div>
@@ -1869,7 +1923,7 @@
     const verdictHtml = res
       ? `
         <div class="verdict-box verdict-${res.level}">
-          <div style="font-weight:800;font-size:14.5px">${res.title}</div>
+          <div style="font-weight:800;font-size:14.5px"><span class="status-dot-verdict"></span>${res.title}</div>
           <div style="font-size:12.5px;margin-top:5px;line-height:1.45">${res.detail}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:11.5px">
             <div style="padding:7px 9px;background:rgba(255,255,255,.55);border-radius:10px">Impacto/mês: <strong class="num">${esc(
@@ -1892,7 +1946,7 @@
     return `
       <div style="display:flex;flex-direction:column;gap:14px">
         <div class="card" style="background:var(--bg-card-soft);padding:14px 16px">
-          <div style="font-weight:800;font-size:14px;margin-bottom:10px">🧮 Simulador: Se eu comprar, me aperto?</div>
+          <div style="font-weight:800;font-size:14px;margin-bottom:10px;display:flex;align-items:center;gap:8px">${icoBadge('calculator')}<span>Simulador: Se eu comprar, me aperto?</span></div>
           <div style="display:grid;grid-template-columns:1fr 110px;gap:8px;margin-bottom:8px">
             <input id="${prefix}SimItem" class="input" placeholder="Ex: Geladeira, Tênis, Viagem..." value="${esc(ui.sim.item)}" />
             <input id="${prefix}SimAmt" class="input" type="number" step="0.01" placeholder="Valor R$" value="${esc(ui.sim.amount)}" />
@@ -1924,7 +1978,7 @@
         ${verdictHtml}
 
         <div class="card" style="display:flex;flex-direction:column;gap:10px">
-          <div style="font-weight:800;font-size:14px">💬 Pergunte ao Consultor</div>
+          <div style="font-weight:800;font-size:14px;display:flex;align-items:center;gap:8px">${icoBadge('message')}<span>Pergunte ao Consultor</span></div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
             <button type="button" class="btn-secondary" style="font-size:11px;padding:5px 10px" data-action="quick-ask" data-q="Quanto ainda sobra livre esse mês?">Quanto sobra?</button>
             <button type="button" class="btn-secondary" style="font-size:11px;padding:5px 10px" data-action="quick-ask" data-q="Se eu comprar algo de R$ 1.800 em 6x eu me aperto esse mês?">Testar R$ 1.800 em 6x</button>
@@ -1955,7 +2009,7 @@
     return `
       <div class="view-enter grid-2">
         <div class="card" style="display:flex;flex-direction:column;gap:14px">
-          <div class="card-title"><span>👫</span><span>Nomes, Marca e Fotos Personalizadas</span></div>
+          <div class="card-title">${icoBadge('users')}<span>Nomes, Marca e Fotos Personalizadas</span></div>
           <div>
             <label class="field-label">Título do Painel</label>
             <input id="cfgBrandInp" class="input" value="${esc(brand)}" />
@@ -1976,21 +2030,21 @@
             <div style="text-align:center">
               <div class="avatar-editable" style="margin:0 auto" data-action="upload-person-photo" data-person="casal">
                 <img src="${esc(resolvePersonAvatar('casal'))}" />
-                <span class="avatar-overlay">📷</span>
+                <span class="avatar-overlay">${ico('camera', 16)}</span>
               </div>
               <div style="font-size:12px;font-weight:700;margin-top:6px">Foto Casal</div>
             </div>
             <div style="text-align:center">
               <div class="avatar-editable" style="margin:0 auto" data-action="upload-person-photo" data-person="eu">
                 <img src="${esc(resolvePersonAvatar('eu'))}" />
-                <span class="avatar-overlay">📷</span>
+                <span class="avatar-overlay">${ico('camera', 16)}</span>
               </div>
               <div style="font-size:12px;font-weight:700;margin-top:6px">${esc(hisName)}</div>
             </div>
             <div style="text-align:center">
               <div class="avatar-editable" style="margin:0 auto" data-action="upload-person-photo" data-person="esposa">
                 <img src="${esc(resolvePersonAvatar('esposa'))}" />
-                <span class="avatar-overlay">📷</span>
+                <span class="avatar-overlay">${ico('camera', 16)}</span>
               </div>
               <div style="font-size:12px;font-weight:700;margin-top:6px">${esc(herName)}</div>
             </div>
@@ -1998,7 +2052,7 @@
         </div>
 
         <div class="card" style="display:flex;flex-direction:column;gap:12px">
-          <div class="card-title"><span>☁️</span><span>Sincronização Drakars &amp; Link para Esposa</span></div>
+          <div class="card-title">${icoBadge('cloud')}<span>Sincronização Drakars &amp; Link para Esposa</span></div>
           <p style="font-size:13px;color:var(--muted);line-height:1.5">
             Modo atual: <strong>${esc(
               ui.syncMode === 'local'
@@ -2051,13 +2105,13 @@
     const brandEl = document.getElementById('brandTitle');
     if (brandEl) brandEl.textContent = appState.financeBrandName || 'Nós no Azul';
     const grEl = document.getElementById('greetingTitle');
-    if (grEl) grEl.textContent = `Olá, ${his} e ${her}! 👋`;
+    if (grEl) grEl.textContent = `Olá, ${his} e ${her}!`;
     const mEl = document.getElementById('monthLabel');
     if (mEl) mEl.textContent = formatMonthLabel(ui.monthKey);
-    const hisBtn = document.getElementById('scopeHisBtn');
-    if (hisBtn) hisBtn.textContent = `👤 ${his}`;
-    const herBtn = document.getElementById('scopeHerBtn');
-    if (herBtn) herBtn.textContent = `👩 ${her}`;
+    const hisLbl = document.querySelector('#scopeHisBtn .scope-label');
+    if (hisLbl) hisLbl.textContent = his;
+    const herLbl = document.querySelector('#scopeHerBtn .scope-label');
+    if (herLbl) herLbl.textContent = her;
     const av = document.getElementById('coupleAvatarImg');
     if (av) av.src = resolvePersonAvatar('casal');
 
@@ -2113,7 +2167,7 @@
     openModal(`
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <h3 class="serif-display" style="font-size:20px">Novo Lançamento</h3>
-        <button type="button" data-action="close-modal">✕</button>
+        <button type="button" data-action="close-modal">${ico('close', 16)}</button>
       </div>
       <form data-action="submit-tx" style="display:flex;flex-direction:column;gap:10px">
         <div class="grid-2">
@@ -2189,7 +2243,7 @@
     openModal(`
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <h3 class="serif-display" style="font-size:20px">Nova Meta do Casal</h3>
-        <button type="button" data-action="close-modal">✕</button>
+        <button type="button" data-action="close-modal">${ico('close', 16)}</button>
       </div>
       <form data-action="submit-goal" style="display:flex;flex-direction:column;gap:10px">
         <div>
@@ -2209,9 +2263,9 @@
         <div>
           <label class="field-label">Foto Pronta (ou troque depois por uma foto sua!)</label>
           <select name="imagePreset" class="input">
-            <option value="travel">✈️ Viagem / Montanhas</option>
-            <option value="house">🏡 Apartamento / Casa</option>
-            <option value="emergency">🛡️ Reserva / Cofrinho</option>
+            <option value="travel">Viagem / Montanhas</option>
+            <option value="house">Apartamento / Casa</option>
+            <option value="emergency">Reserva / Cofrinho</option>
           </select>
         </div>
         <button type="submit" class="btn-primary" style="justify-content:center;margin-top:6px">Criar Meta</button>
@@ -2223,7 +2277,7 @@
     openModal(`
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <h3 class="serif-display" style="font-size:20px">Adicionar Conta Bancária</h3>
-        <button type="button" data-action="close-modal">✕</button>
+        <button type="button" data-action="close-modal">${ico('close', 16)}</button>
       </div>
       <form data-action="submit-bank" style="display:flex;flex-direction:column;gap:10px">
         <div>
@@ -2259,7 +2313,7 @@
     openModal(`
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <h3 class="serif-display" style="font-size:20px">Adicionar Cartão de Crédito</h3>
-        <button type="button" data-action="close-modal">✕</button>
+        <button type="button" data-action="close-modal">${ico('close', 16)}</button>
       </div>
       <form data-action="submit-card" style="display:flex;flex-direction:column;gap:10px">
         <div class="grid-2">
@@ -2303,7 +2357,7 @@
     openModal(`
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <h3 class="serif-display" style="font-size:20px">Cadastrar Salário / Renda Fixa</h3>
-        <button type="button" data-action="close-modal">✕</button>
+        <button type="button" data-action="close-modal">${ico('close', 16)}</button>
       </div>
       <form data-action="submit-salary" style="display:flex;flex-direction:column;gap:10px">
         <div>
@@ -2337,7 +2391,7 @@
     openModal(`
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <h3 class="serif-display" style="font-size:20px">Nova Conta Fixa</h3>
-        <button type="button" data-action="close-modal">✕</button>
+        <button type="button" data-action="close-modal">${ico('close', 16)}</button>
       </div>
       <form data-action="submit-bill" style="display:flex;flex-direction:column;gap:10px">
         <div>
@@ -2646,7 +2700,7 @@
     if (ui.notifOpen) {
       const met = computeMetrics(ui.monthKey, 'casal');
       pop.innerHTML = `
-        <div style="font-weight:800;font-size:14px;margin-bottom:8px">🔔 Lembretes do Mês</div>
+        <div style="font-weight:800;font-size:14px;margin-bottom:8px;display:flex;align-items:center;gap:7px">${icoBadge('bell')}<span>Lembretes do Mês</span></div>
         ${
           met.unpaidBills.length
             ? met.unpaidBills
@@ -2657,7 +2711,7 @@
                     )}</strong></div>`
                 )
                 .join('')
-            : '<div style="font-size:13px;color:var(--muted)">Nenhuma conta pendente neste mês 🎉</div>'
+            : '<div style="font-size:13px;color:var(--muted)">Nenhuma conta pendente neste mês.</div>'
         }
       `;
     }
