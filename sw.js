@@ -1,5 +1,12 @@
-const CACHE_NAME = 'drakars-pwa-v1';
-const ASSETS = ['./', './index.html', './widget.html', './manifest.json', './icon.svg'];
+const CACHE_NAME = 'drakars-pwa-v3';
+const ASSETS = [
+  './',
+  './index.html',
+  './gasto.html',
+  './widget.html',
+  './manifest.json',
+  './icon.svg',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -9,7 +16,14 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      )
+      .then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (event) => {

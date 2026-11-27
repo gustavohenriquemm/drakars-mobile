@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+<meta name="theme-color" content="#0E1013" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="icon" type="image/svg+xml" href="./icon.svg" />
+<link rel="apple-touch-icon" href="./icon.svg" />
+<title>Drakars • Gasto Rápido</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{background:#0E1013;color:#F3F4F6;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:14px 14px 28px;min-height:100vh}
+  .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:800;font-size:17px}
+  .badge{background:#351A2A;color:#FDA4AF;border:1px solid rgba(251,113,133,.35);padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700}
+  .card{background:#16191E;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px;margin-bottom:12px}
+  .lbl{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;display:block}
+  .amt-wrap{display:flex;align-items:center;gap:8px;background:#0B0D11;border:1.5px solid rgba(251,113,133,.4);border-radius:16px;padding:12px 14px}
+  .amt-prefix{font-size:22px;font-weight:800;color:#FB7185}
+  .amt-inp{flex:1;background:transparent;border:none;color:#fff;font-size:30px;font-weight:800;outline:none;width:100%}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:6px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .chip{background:#1D2128;border:1.5px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 6px;color:rgba(255,255,255,.8);font-size:12px;font-weight:700;text-align:center;cursor:pointer}
+  .chip.act{background:#351A2A;border-color:#FB7185;color:#fff;box-shadow:0 0 12px rgba(251,113,133,.25)}
+  .chip.act-g{background:#233217;border-color:#7EE823;color:#9AF549}
+  .bank-chip{display:flex;align-items:center;gap:8px;background:#1D2128;border:1.5px solid rgba(255,255,255,.08);border-radius:12px;padding:10px;text-align:left;color:#fff;cursor:pointer;font-size:12px;font-weight:700}
+  .bank-chip.act{background:#351A2A;border-color:#FB7185}
+  .bank-dot{width:10px;height:24px;border-radius:6px;flex-shrink:0}
+  input,select{width:100%;background:#111318;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:11px 12px;color:#fff;font-size:14px;outline:none}
+  .save-btn{width:100%;background:linear-gradient(135deg,#FB7185,#F43F5E);color:#fff;border:none;border-radius:16px;padding:15px;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 8px 24px rgba(244,63,94,.35)}
+  .save-btn:disabled{opacity:.5}
+  .btn2{background:rgba(255,255,255,.09);color:#fff;border:none;border-radius:12px;padding:11px 14px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+  .ok-box{text-align:center;padding:24px 14px}
+  .ok-ico{font-size:48px;margin-bottom:8px}
+</style>
+</head>
+<body>
+  <div class="hdr">
+    <div class="brand">
+      <img src="./icon.svg" width="24" height="24" style="border-radius:6px" alt="" />
+      <span>Drakars • Gasto</span>
+    </div>
+    <a class="btn2" style="padding:6px 11px;font-size:11px" href="./">Abrir Painel</a>
+  </div>
+  <div id="root"></div>
+<script>
+const CFG_KEY="drakars_cloud_cfg", DATA_KEY="drakars_cloud_data";
+const BANK_COLORS={nubank:"#820AD1",itau:"#EC7000",bradesco:"#CC092F",santander:"#EC0000",bb:"#FFCC00",caixa:"#005CA9",inter:"#FF7A00",c6:"#27272A",btg:"#001E62",xp:"#FFD000",mercadopago:"#009EE3",picpay:"#21C25E",pagbank:"#00A868",sicredi:"#3FA110",sicoob:"#003641",wise:"#9FE870",nomad:"#C9A227"};
+const CATS=[
+  ["Mercado","🛒 Mercado"],["Alimentação","🍔 Alimentação"],["Transporte","🚗 Transporte"],["Moradia","🏠 Moradia"],
+  ["Saúde","🩺 Saúde"],["Lazer","🎉 Lazer"],["Assinaturas","📱 Assinaturas"],["Outros","📦 Outros"]
+];
+
+function readCfg(){
+  if(location.hash && location.hash.length>1){
+    const p=new URLSearchParams(location.hash.slice(1));
+    const gistId=p.get("gist"), token=p.get("token");
+    if(gistId && token){
+      const c={gistId,token};
+      localStorage.setItem(CFG_KEY,JSON.stringify(c));
+      history.replaceState(null,"",location.pathname+location.search);
+      return c;
+    }
+  }
+  try{return JSON.parse(localStorage.getItem(CFG_KEY)||"null");}catch{return null;}
+}
+
+let cfg=readCfg(), data=null;
+try{data=JSON.parse(localStorage.getItem(DATA_KEY)||"null");}catch{}
+
+let pm="credit", selectedTarget="", cat="Mercado", owner="casal", installments=1, saving=false, savedInfo=null;
+
+async function syncData(){
+  if(!cfg) return;
+  try{
+    const r=await fetch("https://api.github.com/gists/"+cfg.gistId,{cache:"no-store",headers:{Accept:"application/vnd.github+json",Authorization:"Bearer "+cfg.token}});
+    if(r.ok){
+      const g=await r.json();
+      const txt=g.files && g.files["drakars-sync.json"] && g.files["drakars-sync.json"].content;
+      if(txt){
+        data=JSON.parse(txt);
+        localStorage.setItem(DATA_KEY, JSON.stringify(data));
+        pickDefaultTarget();
+        render();
+      }
+    }
+  }catch{}
+}
+
+function pickDefaultTarget(){
+  if(!data) return;
+  if(pm==="credit" && (data.creditCards||[]).length){
+    if(!selectedTarget.startsWith("card:")) selectedTarget="card:"+data.creditCards[0].id;
+  } else if((pm==="debit"||pm==="pix") && (data.bankAccounts||[]).length){
+    if(!selectedTarget.startsWith("acc:")) selectedTarget="acc:"+data.bankAccounts[0].id;
+  } else {
+    selectedTarget="";
+  }
+}
+
+function setPm(next){
+  pm=next;
+  selectedTarget="";
+  pickDefaultTarget();
+  render();
+}
+
+async function submitExpense(e){
+  e.preventDefault();
+  if(!cfg || saving) return;
+  const rawAmt=document.getElementById("amtInp").value.replace(",",".");
+  const amount=parseFloat(rawAmt);
+  if(isNaN(amount) || amount<=0){ alert("Digite o valor gasto!"); return; }
+  const descInp=document.getElementById("descInp").value.trim();
+  const title=descInp || cat;
+  const date=new Date().toISOString().slice(0,10);
+  const accountId=selectedTarget.startsWith("acc:")?selectedTarget.slice(4):undefined;
+  const cardId=selectedTarget.startsWith("card:")?selectedTarget.slice(5):undefined;
+  const inst=pm==="credit"?Number(installments)||1:1;
+
+  saving=true; render();
+  try{
+    const rGet=await fetch("https://api.github.com/gists/"+cfg.gistId,{cache:"no-store",headers:{Accept:"application/vnd.github+json",Authorization:"Bearer "+cfg.token}});
+    const g=await rGet.json();
+    const fresh=JSON.parse(g.files["drakars-sync.json"].content);
+    fresh.transactions=fresh.transactions||[];
+    fresh.transactions.unshift({
+      id:"mob-"+Date.now(),title,amount,type:"expense",category:cat,owner,date,
+      paid:pm==="credit"?false:true,paymentMethod:pm,accountId,cardId
+    });
+    fresh.pendingMobileOps=fresh.pendingMobileOps||[];
+    fresh.pendingMobileOps.push({
+      id:Date.now()+"-"+Math.random().toString(36).slice(2,7),
+      type:"add_transaction",
+      payload:{title,amount,type:"expense",category:cat,owner,date,paymentMethod:pm,accountId,cardId,installments:inst,paid:pm==="credit"?false:true},
+      createdAt:Date.now()
+    });
+    fresh.updatedAt=Date.now();
+    await fetch("https://api.github.com/gists/"+cfg.gistId,{
+      method:"PATCH",
+      headers:{Accept:"application/vnd.github+json",Authorization:"Bearer "+cfg.token,"Content-Type":"application/json"},
+      body:JSON.stringify({files:{"drakars-sync.json":{content:JSON.stringify(fresh,null,2)}}})
+    });
+    data=fresh; localStorage.setItem(DATA_KEY, JSON.stringify(data));
+    savedInfo={title,amount,cat,pm,inst};
+  }catch(err){
+    alert("Erro ao salvar na nuvem. Tente novamente.");
+  }finally{
+    saving=false; render();
+  }
+}
+
+function render(){
+  const root=document.getElementById("root");
+  if(!cfg){
+    root.innerHTML='<div class="card"><div class="ok-box"><div class="ok-ico">📲</div><p style="font-size:14px;margin-bottom:10px">Escaneie primeiro o QR Code na aba <b>Celular → 2 Toques Atrás</b> no Drakars do PC.</p></div></div>';
+    return;
+  }
+  if(savedInfo){
+    const brl=savedInfo.amount.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+    root.innerHTML=`<div class="card ok-box">
+      <div class="ok-ico">✅</div>
+      <div style="font-size:20px;font-weight:800;color:#9AF549;margin-bottom:4px">${brl} Salvo!</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.7);margin-bottom:16px">${esc(savedInfo.title)} • ${esc(savedInfo.cat)}${savedInfo.inst>1?' • '+savedInfo.inst+'x':''}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="save-btn" onclick="savedInfo=null;render()">+ Lançar Outro Gasto</button>
+        <a class="btn2" href="./">Ir para o Drakars Completo</a>
+      </div>
+    </div>`;
+    return;
+  }
+
+  const partner=(data&&data.partnerName)||"Esposa";
+  const cards=(data&&data.creditCards)||[];
+  const banks=(data&&data.bankAccounts)||[];
+  const targetOptions=pm==="credit"?cards.map(c=>({id:"card:"+c.id,name:c.name,sub:c.last4?"•••• "+c.last4:"Crédito",bankKey:c.bankKey})):pm==="debit"||pm==="pix"?banks.map(b=>({id:"acc:"+b.id,name:b.name,sub:"Saldo "+Number(b.balance||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}),bankKey:b.bankKey})):[];
+
+  root.innerHTML=`<form onsubmit="submitExpense(event)">
+    <div class="card">
+      <span class="lbl">Quanto você gastou?</span>
+      <div class="amt-wrap">
+        <span class="amt-prefix">R$</span>
+        <input id="amtInp" class="amt-inp" type="text" inputmode="decimal" placeholder="0,00" autofocus />
+      </div>
+    </div>
+
+    <div class="card">
+      <span class="lbl">Forma de pagamento</span>
+      <div class="grid4" style="margin-bottom:${targetOptions.length||pm==='credit'?'10px':'0'}">
+        <button type="button" class="chip ${pm==='credit'?'act':''}" onclick="setPm('credit')">💳 Crédito</button>
+        <button type="button" class="chip ${pm==='debit'?'act':''}" onclick="setPm('debit')">🏧 Débito</button>
+        <button type="button" class="chip ${pm==='pix'?'act':''}" onclick="setPm('pix')">⚡ Pix</button>
+        <button type="button" class="chip ${pm==='cash'?'act':''}" onclick="setPm('cash')">💵 Dinheiro</button>
+      </div>
+
+      ${targetOptions.length ? `<span class="lbl" style="margin-top:6px">${pm==='credit'?'Escolha o Cartão':'Escolha o Banco'}</span>
+      <div class="grid2" style="margin-bottom:${pm==='credit'?'10px':'0'}">
+        ${targetOptions.map(o=>`<button type="button" class="bank-chip ${selectedTarget===o.id?'act':''}" onclick="selectedTarget='${o.id}';render()">
+          <span class="bank-dot" style="background:${BANK_COLORS[o.bankKey]||'#7EE823'}"></span>
+          <span style="min-width:0"><span style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(o.name)}</span><span style="font-size:10px;color:rgba(255,255,255,.55)">${esc(o.sub)}</span></span>
+        </button>`).join("")}
+      </div>` : ''}
+
+      ${pm==='credit' ? `<span class="lbl" style="margin-top:6px">Parcelas</span>
+      <select onchange="installments=Number(this.value)">
+        <option value="1" ${installments===1?'selected':''}>À vista (1x no cartão)</option>
+        ${[2,3,4,5,6,8,10,12].map(n=>`<option value="${n}" ${installments===n?'selected':''}>${n}x parcelas</option>`).join("")}
+      </select>` : ''}
+    </div>
+
+    <div class="card">
+      <span class="lbl">Categoria</span>
+      <div class="grid4">
+        ${CATS.map(([val,lbl])=>`<button type="button" class="chip ${cat===val?'act-g':''}" onclick="cat='${val}';render()">${lbl}</button>`).join("")}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="grid3" style="margin-bottom:10px">
+        <button type="button" class="chip ${owner==='casal'?'act':''}" onclick="owner='casal';render()">❤️ Casal</button>
+        <button type="button" class="chip ${owner==='eu'?'act':''}" onclick="owner='eu';render()">👤 Você</button>
+        <button type="button" class="chip ${owner==='esposa'?'act':''}" onclick="owner='esposa';render()">👩 ${esc(partner)}</button>
+      </div>
+      <input id="descInp" placeholder="Descrição opcional (ex: Pão, Uber, Ipiranga...)" />
+    </div>
+
+    <button class="save-btn" type="submit" ${saving?'disabled':''}>${saving?'Salvando...':'✅ Salvar Gasto Agora'}</button>
+  </form>`;
+}
+
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+pickDefaultTarget();
+render();
+syncData();
+</script>
+</body>
+</html>

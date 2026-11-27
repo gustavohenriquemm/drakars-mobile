@@ -1,7 +1,7 @@
 {
   "name": "Drakars",
   "short_name": "Drakars",
-  "description": "Assessor pessoal Drakars no celular",
+  "description": "Assessor pessoal Drakars no celular • CDHU, Casa & Dev Studio",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -13,6 +13,14 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Lançar Gasto Rápido",
+      "short_name": "Gasto",
+      "description": "Abrir lançamento rápido de gasto com cartão e categoria",
+      "url": "./gasto.html"
     }
   ]
 }
