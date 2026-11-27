@@ -65,7 +65,7 @@
 <script>
 const CFG_KEY="drakars_cloud_cfg";
 const DATA_KEY="drakars_cloud_data";
-let tab="tasks", cfg=null, data=null, filter="pending";
+let tab="tasks", homeSub="home", cfg=null, data=null, filter="pending";
 
 function readConfig(){
   if(location.hash && location.hash.length>1){
@@ -224,6 +224,34 @@ async function toggleShop(id){
   });
 }
 
+async function addLead(e){
+  e.preventDefault();
+  const name=document.getElementById("leadName").value.trim();
+  const business=document.getElementById("leadBiz").value.trim();
+  const val=parseFloat(String(document.getElementById("leadVal").value||"0").replace(",","."))||0;
+  if(!name) return;
+  document.getElementById("leadName").value="";
+  document.getElementById("leadBiz").value="";
+  document.getElementById("leadVal").value="";
+  await pushOp("add_lead",{name,business,estimatedValue:val,projectType:"Landing Page",source:"Site de Captura"},(d)=>{
+    d.leads=d.leads||[];
+    d.leads.unshift({id:"ld-"+Date.now(),name,business,estimatedValue:val,projectType:"Landing Page",status:"novo"});
+  });
+}
+
+async function addReel(e){
+  e.preventDefault();
+  const title=document.getElementById("reelTitle").value.trim();
+  const hook=document.getElementById("reelHook").value.trim();
+  if(!title) return;
+  document.getElementById("reelTitle").value="";
+  document.getElementById("reelHook").value="";
+  await pushOp("add_reel",{title,hook:hook||("Gancho para "+title),format:"Reels"},(d)=>{
+    d.reels=d.reels||[];
+    d.reels.unshift({id:"rl-"+Date.now(),title,hook:hook||title,format:"Reels",status:"ideia"});
+  });
+}
+
 async function sendCmd(e){
   e.preventDefault();
   const inp=document.getElementById("cmdInp");
@@ -294,7 +322,33 @@ function render(warn){
     const cards=data.creditCards||[];
     const goals=data.savingsGoals||[];
     const bankColors={nubank:"#820AD1",itau:"#EC7000",bradesco:"#CC092F",santander:"#EC0000",bb:"#0038A8",caixa:"#005CA9",inter:"#FF7A00",c6:"#242424",btg:"#001E62",xp:"#111111",mercadopago:"#009EE3",picpay:"#21C25E",pagbank:"#00A868",sicredi:"#3FA110",sicoob:"#003641",wise:"#9FE870",nomad:"#C9A227"};
-    el.innerHTML=`
+    const leads=data.leads||[];
+    const reels=data.reels||[];
+    const subBar=`<div style="display:flex;gap:6px;margin-bottom:10px"><button class="btn2" style="flex:1;${homeSub==='home'?'background:#351A2A;color:#FDA4AF;font-weight:700':''}" onclick="homeSub='home';render()">🏠 Casa & Casal</button><button class="btn2" style="flex:1;${homeSub==='dev'?'background:#2A1842;color:#D8B4FE;font-weight:700':''}" onclick="homeSub='dev';render()">🚀 Dev Studio (${leads.length})</button></div>`;
+    if(homeSub==="dev"){
+      el.innerHTML=subBar+`
+        <div class="card">
+          <div class="sub" style="margin-bottom:6px">LEADS & CLIENTES (${leads.length})</div>
+          <form class="form" onsubmit="addLead(event)">
+            <input id="leadName" placeholder="Nome do cliente..." style="flex:2" />
+            <input id="leadBiz" placeholder="Empresa/Nicho" />
+            <input id="leadVal" type="number" placeholder="R$" />
+            <button class="btn" style="background:#A855F7;color:#fff" type="submit">+</button>
+          </form>
+          ${leads.length ? leads.slice(0,10).map(l=>`<div class="row"><div class="ttl">🚀 ${esc(l.name)}${l.business?' ('+esc(l.business)+')':''}<div class="sub">${esc(l.projectType)} • ${esc(l.status)} • ${fmtBrl(l.estimatedValue)}</div></div></div>`).join("") : '<div class="sub">Nenhum lead cadastrado ainda</div>'}
+        </div>
+        <div class="card">
+          <div class="sub" style="margin-bottom:6px">IDEIAS DE REELS (${reels.length})</div>
+          <form class="form" onsubmit="addReel(event)">
+            <input id="reelTitle" placeholder="Ideia de Reel..." style="flex:2" />
+            <input id="reelHook" placeholder="Gancho 3s..." />
+            <button class="btn" style="background:#A855F7;color:#fff" type="submit">+</button>
+          </form>
+          ${reels.length ? reels.slice(0,10).map(r=>`<div class="row"><div class="ttl">🎬 ${esc(r.title)}<div class="sub">${esc(r.hook)} • ${esc(r.status)}</div></div></div>`).join("") : '<div class="sub">Nenhuma ideia de Reel</div>'}
+        </div>`;
+      return;
+    }
+    el.innerHTML=subBar+`
       <div class="card">
         <div class="sub" style="margin-bottom:8px">FINANCEIRO DO CASAL (${month}) • Você & ${esc(partner)}</div>
         <div class="kpi-grid">
