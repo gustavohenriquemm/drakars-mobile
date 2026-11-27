@@ -1,9 +1,12 @@
-const CACHE_NAME = 'drakars-pwa-v3';
+const CACHE_NAME = 'drakars-pwa-v4';
 const ASSETS = [
   './',
   './index.html',
   './gasto.html',
   './widget.html',
+  './financeiro.html',
+  './financeiro.css',
+  './financeiro.js',
   './manifest.json',
   './icon.svg',
 ];
